@@ -1,0 +1,14 @@
+{
+  "select_model": {
+    "ru": "Выберите модель:",
+    "en": "Select Model:"
+  },
+  "generating_response": {
+    "ru": "Генерация ответа...!",
+    "en": "Generating response...!"
+  },
+  "username": {
+    "ru": "Имя пользователя",
+    "en": "User name"
+  }
+}
