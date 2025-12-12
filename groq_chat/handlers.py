@@ -9,9 +9,11 @@ from telegram.constants import ChatAction, ParseMode
 from groq_chat.html_format import format_message
 from groq_chat.groq_chat import chatbot, generate_response
 import asyncio
+import aiohttp
 
 SYSTEM_PROMPT_SP = 1
 CANCEL_SP = 2
+
 
 def new_chat(context: ContextTypes.DEFAULT_TYPE) -> None:
     if context.user_data.get("system_prompt") is not None:
@@ -61,12 +63,33 @@ async def new_command_handler(
     )
 
 
+async def get_groq_models() -> dict:
+
+    base_url = "https://api.groq.com"
+    url = f"{base_url}/openai/v1/models"
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(
+            url,
+            headers={
+                "Authorization": f"Bearer {chatbot.api_key}",
+                "Content-Type": "application/json",
+            },
+        ) as response:
+            response.raise_for_status()
+            result = []
+            resp_json = await response.json()
+            for model in resp_json.get("data"):
+                result.append(model.get("id"))
+
+            return result
+
+
 async def model_command_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
-    """Change the model used to generate responses"""
-    models = ["llama-3.1-8b-instant", "llama-3.1-70b-versatile", "gemma2-9b-it", "llama3-8b-8192", "llama3-70b-8192", "mixtral-8x7b-32768", "gemma-7b-it"]
 
+    models = await get_groq_models()
     reply_markup = InlineKeyboardMarkup(
         [
             [InlineKeyboardButton(model, callback_data="change_model_" + model)]
@@ -118,9 +141,7 @@ async def get_system_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         await update.message.reply_text("System prompt cleared.")
     else:
         context.user_data["system_prompt"] = system_prompt
-        await update.message.reply_text(
-            "System prompt changed."
-        )
+        await update.message.reply_text("System prompt changed.")
     new_chat(context)
     return ConversationHandler.END
 
@@ -139,7 +160,10 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if not message:
         return
 
-    asyncio.run_coroutine_threadsafe(update.message.chat.send_action(ChatAction.TYPING), loop=asyncio.get_event_loop())
+    asyncio.run_coroutine_threadsafe(
+        update.message.chat.send_action(ChatAction.TYPING),
+        loop=asyncio.get_event_loop(),
+    )
     full_output_message = ""
     for message in generate_response(message, context):
         if message:
@@ -166,15 +190,20 @@ async def info_command_handler(
     # if context.user_data.get("system_prompt") is not None:
     #     message += f"\n**System Prompt**: \n```\n{context.user_data.get("system_prompt")}\n```"
     await update.message.reply_text(format_message(message), parse_mode=ParseMode.HTML)
-    
+
+
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Log the error and send a telegram message to notify the developer."""
     # Log the error before we do anything else, so we can see it even if something breaks.
-    logging.getLogger(__name__).error("Exception while handling an update:", exc_info=context.error)
+    logging.getLogger(__name__).error(
+        "Exception while handling an update:", exc_info=context.error
+    )
 
     # traceback.format_exception returns the usual python message about an exception, but as a
     # list of strings rather than a single string, so we have to join them together.
-    tb_list = traceback.format_exception(None, context.error, context.error.__traceback__)
+    tb_list = traceback.format_exception(
+        None, context.error, context.error.__traceback__
+    )
     tb_string = "".join(tb_list)
 
     # Build the message with some markup and additional information about what happened.
@@ -188,6 +217,4 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
     )
 
     # Finally, send the message
-    await update.message.reply_text(
-        text=message, parse_mode=ParseMode.HTML
-    )
+    await update.message.reply_text(text=message, parse_mode=ParseMode.HTML)

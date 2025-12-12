@@ -1,4 +1,5 @@
 from groq import Groq
+import httpx
 from dotenv import load_dotenv
 import os
 import groq
@@ -9,6 +10,7 @@ load_dotenv()
 # Create a ChatBot
 chatbot = Groq(
     api_key=os.environ.get("GROQ_API_KEY"),
+    http_client=httpx.Client(),
 )
 
 
