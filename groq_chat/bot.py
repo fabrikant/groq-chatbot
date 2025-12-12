@@ -27,6 +27,7 @@ from dotenv import load_dotenv
 from mongopersistence import MongoPersistence
 import logging
 from telegram import Update, BotCommand
+from translate.translate import translate
 
 load_dotenv()
 
@@ -51,13 +52,13 @@ if os.getenv("MONGODB_URL"):
 async def set_bot_commands(app):
 
     commands = [
-        BotCommand("start", "start"),
-        BotCommand("help", "show help"),
-        BotCommand("info", "bot info"),
-        BotCommand("new", "new conversation"),
-        BotCommand("model", "Choose model"),
-        BotCommand("system_prompt", "System prompt"),
-        BotCommand("cancel", "Cancel the system prompt"),
+        BotCommand("start", await translate("start")),
+        BotCommand("help", await translate("show_help")),
+        BotCommand("info", await translate("bot_info")),
+        BotCommand("new", await translate("new_conversation")),
+        BotCommand("model", await translate("choose_model")),
+        # BotCommand("system_prompt", await translate("system_prompt")),
+        # BotCommand("cancel", await translate("cancel_prompt")),
     ]
     # `app.bot` уже инициализирован к моменту вызова `run_polling()`
     await app.bot.set_my_commands(commands)

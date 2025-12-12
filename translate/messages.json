@@ -10,5 +10,33 @@
   "username": {
     "ru": "Имя пользователя",
     "en": "User name"
+  },
+  "start": {
+    "ru": "Начать работу",
+    "en": "Start"
+  },
+  "show_help": {
+    "ru": "Показать подсказку",
+    "en": "Show help"
+  },
+  "bot_info": {
+    "ru": "Текущий разговор",
+    "en": "Сurrent conversation"
+  },
+  "new_conversation": {
+    "ru": "Новый разговор",
+    "en": "New conversation"
+  },
+  "choose_model": {
+    "ru": "Выбрать модель",
+    "en": "Choose model"
+  },
+  "system_prompt": {
+    "ru": "Системная подсказка",
+    "en": "System prompt"
+  },
+  "Cancel the system prompt": {
+    "ru": "Отменить системную подсказку",
+    "en": "Cancel the system prompt"
   }
 }
