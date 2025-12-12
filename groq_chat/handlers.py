@@ -165,13 +165,24 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         loop=asyncio.get_event_loop(),
     )
     full_output_message = ""
-    for message in generate_response(message, context):
-        if message:
-            full_output_message += message
-            send_message = format_message(full_output_message)
-            init_msg = await init_msg.edit_text(
-                send_message, parse_mode=ParseMode.HTML, disable_web_page_preview=True
-            )
+    current_text = ""
+    init_msg = await update.message.reply_text("Generating response...")
+    for chunk in generate_response(message, context):
+        if chunk:
+            full_output_message += chunk
+            potential_text = current_text + chunk
+            potential_formatted = format_message(potential_text)
+            if len(potential_formatted) > 4096:
+                # Отправить текущее сообщение
+                if current_text:
+                    send_message = format_message(current_text)
+                    await update.message.reply_text(send_message, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+                # Начать новое сообщение
+                current_text = chunk
+                init_msg = await update.message.reply_text(format_message(current_text), parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+            else:
+                current_text = potential_text
+                init_msg = await init_msg.edit_text(potential_formatted, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
     context.user_data["messages"] = context.user_data.get("messages", []) + [
         {
             "role": "assistant",
