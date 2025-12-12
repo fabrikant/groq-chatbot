@@ -26,15 +26,10 @@ from groq_chat.filters import AuthFilter, MessageFilter
 from dotenv import load_dotenv
 from mongopersistence import MongoPersistence
 import logging
+from telegram import Update, BotCommand
 
 load_dotenv()
 
-# Enable logging
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
-)
-# set higher logging level for httpx to avoid all GET and POST requests being logged
-logging.getLogger("httpx").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +46,22 @@ if os.getenv("MONGODB_URL"):
         ignore_general_data=["cache"],
         update_interval=10,
     )
+
+
+async def set_bot_commands(app):
+
+    commands = [
+        BotCommand("start", "start"),
+        BotCommand("help", "show help"),
+        BotCommand("info", "bot info"),
+        BotCommand("new", "new conversation"),
+        BotCommand("model", "Choose model"),
+        BotCommand("system_prompt", "System prompt"),
+        BotCommand("cancel", "Cancel the system prompt"),
+    ]
+    # `app.bot` уже инициализирован к моменту вызова `run_polling()`
+    await app.bot.set_my_commands(commands)
+    logger.info("Команды бота установлены в Telegram UI")
 
 
 def start_bot():
@@ -96,6 +107,10 @@ def start_bot():
     )
 
     app.add_error_handler(error_handler)
+    if app.post_init:
+        app.post_init.append(set_bot_commands)
+    else:
+        app.post_init = set_bot_commands
 
     # Run the bot until the user presses Ctrl-C
     app.run_polling(allowed_updates=Update.ALL_TYPES)
