@@ -1,23 +1,32 @@
 import re
+from html import escape
 
-
-def escape_html(text: str) -> str:
-    """Escapes HTML special characters in a string.
-
-    Replaces &, <, > with HTML entities to prevent them
-    from being interpreted as HTML tags when output.
-
-    Args:
-        text (str): The text to escape.
-
-    Returns:
-        str: The text with HTML characters escaped.
+def wrap_tables_in_pre(text):
     """
-    text = text.replace("&", "&amp;")
-    text = text.replace("<", "&lt;")
-    text = text.replace(">", "&gt;")
-    return text
+    Детектирует блоки ASCII-таблиц и оборачивает их в <pre>.
+    Предполагается, что экранирование < и > выполняется внешним кодом.
+    """
+    
+    # Регулярное выражение:
+    # Ищет последовательность строк (минимум 2), которые начинаются и заканчиваются 
+    # на символы разметки (+, -, |) или содержат их в характерных сочетаниях.
+    table_pattern = re.compile(
+        r'((?:^[ \t]*[|+\-].*[|+\-][ \t]*$\n?){2,})', 
+        re.MULTILINE
+    )
 
+    def replacement(match):
+        # Получаем найденную таблицу
+        table_content = match.group(1).rstrip('\n')
+        
+        # Оборачиваем в теги <pre>. 
+        # Добавляем переносы строк для визуального отделения в коде.
+        return f"<pre>\n{table_content}\n</pre>"
+
+    # Проводим замену
+    result = table_pattern.sub(replacement, text)
+    
+    return result
 
 def apply_hand_points(text: str) -> str:
     """Replaces markdown bullet points (*) with right hand point emoji.
@@ -187,7 +196,8 @@ def format_message(text: str) -> str:
     Returns:
       str: The formatted HTML string.
     """
-    formatted_text = escape_html(text)
+    formatted_text = escape(text)
+    # formatted_text = wrap_tables_in_pre(text)
     formatted_text = apply_exclude_code(formatted_text)
     formatted_text = apply_code(formatted_text)
     return formatted_text

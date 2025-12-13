@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 import groq
 from telegram.ext import ContextTypes
-import aiohttp
+
 
 load_dotenv()
 
@@ -25,7 +25,7 @@ async def get_groq_models() -> dict:
         models = await chatbot.models.list()
         available_models = [model.id for model in models.data]
     return available_models
-   
+
 
 async def get_default_model() -> str:
     """Get the default model to use"""
@@ -36,8 +36,6 @@ async def get_default_model() -> str:
     if available_models:
         if "llama3-8b-8192" in available_models:
             return "llama3-8b-8192"
-        elif "llama2-7b-4096" in available_models:
-            return "llama2-7b-4096"
         elif len(available_models) > 0:
             return available_models[0]
         else:

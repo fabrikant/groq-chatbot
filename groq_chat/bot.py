@@ -68,9 +68,6 @@ async def set_bot_commands(app):
 
 
 async def init_chatbot(app):
-    # Disable proxies to avoid httpx issues
-    os.environ['HTTP_PROXY'] = ''
-    os.environ['HTTPS_PROXY'] = ''
     set_chatbot(AsyncGroq(api_key=os.getenv("GROQ_API_KEY"), http_client=httpx.AsyncClient()))
 
 async def prepare_bot(app):

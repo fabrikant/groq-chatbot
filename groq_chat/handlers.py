@@ -6,7 +6,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler
 from telegram.constants import ChatAction, ParseMode
 from groq_chat.html_format import format_message
-from groq_chat.groq_chat import get_chatbot, generate_response
+from groq_chat.groq_chat import generate_response
 from groq_chat.groq_chat import get_groq_models, get_default_model
 from translate.translate import translate
 
