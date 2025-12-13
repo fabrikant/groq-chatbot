@@ -89,9 +89,6 @@ def start_bot():
     # Build the app
     app = app_builder.build()
 
-    # Initialize chatbot after app build
-    # set_chatbot(AsyncGroq(api_key=os.getenv("GROQ_API_KEY"), http_client=aiohttp.ClientSession()))
-
     app.add_handler(CommandHandler("start", start, filters=AuthFilter))
     app.add_handler(CommandHandler("help", help_command, filters=AuthFilter))
     app.add_handler(CommandHandler("new", new_command_handler, filters=AuthFilter))

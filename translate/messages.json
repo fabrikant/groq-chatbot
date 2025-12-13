@@ -38,5 +38,9 @@
   "Cancel the system prompt": {
     "ru": "Отменить системную подсказку",
     "en": "Cancel the system prompt"
+  },
+  "system_prompt_instructions": {
+    "ru": "Отправьте мне системную подсказку. Если вы хотите очистить системную подсказку, отправьте `clear` сейчас.",
+    "en": "Send me a system prompt. If you want to clear the system prompt, send `clear` now."
   }
 }

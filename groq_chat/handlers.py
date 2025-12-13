@@ -7,7 +7,8 @@ from telegram.ext import ContextTypes, ConversationHandler
 from telegram.constants import ChatAction, ParseMode
 from groq_chat.html_format import format_message
 from groq_chat.groq_chat import get_chatbot, generate_response
-import aiohttp
+from groq_chat.groq_chat import get_groq_models, get_default_model
+from translate.translate import translate
 
 SYSTEM_PROMPT_SP = 1
 CANCEL_SP = 2
@@ -28,25 +29,31 @@ def new_chat(context: ContextTypes.DEFAULT_TYPE) -> None:
 async def start(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
     user = update.effective_user
-    message = f"Hi {user.mention_html()}!\n\nStart sending messages with me to generate a response.\n\nSend /new to start a new chat session."
+    message = await translate(
+        (
+            f"Hi {user.mention_html()}!\n\n"
+            "Start sending messages with me to generate a response.\n\n"
+            "Send /new to start a new chat session."
+        )
+    )
     await update.message.reply_html(message)
 
 
 async def help_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
-    help_text = """
-Basic commands:
-/start - Start the bot
-/help - Get help. Shows this message
-
-Chat commands:
-/new - Start a new chat session (model will forget previously generated messages)
-/model - Change the model used to generate responses.
-/system_prompt - Change the system prompt used for new chat sessions.
-/info - Get info about the current chat session.
-
-Send a message to the bot to generate a response.
-"""
+    help_text = await translate(
+        (
+            "Basic commands:\n"
+            "/start - Start the bot\n"
+            "/help - Get help. Shows this message\n\n"
+            "Chat commands:\n"
+            "/new - Start a new chat session (model will forget previously generated messages)\n"
+            "/model - Change the model used to generate responses.\n"
+            "/system_prompt - Change the system prompt used for new chat sessions.\n"
+            "/info - Get info about the current chat session.\n\n"
+            "Send a message to the bot to generate a response."
+        )
+    )
     await update.message.reply_text(help_text)
 
 
@@ -55,29 +62,10 @@ async def new_command_handler(
 ) -> None:
     """Start a new chat session"""
     new_chat(context)
-    await update.message.reply_text("New chat session started.\n\nSwitch models with /model.")
+    message = await translate("New chat session started.\n\nSwitch models with /model.")
+    await update.message.reply_text(message)
 
 
-async def get_groq_models() -> dict:
-
-    base_url = "https://api.groq.com"
-    url = f"{base_url}/openai/v1/models"
-
-    async with aiohttp.ClientSession() as session:
-        async with session.get(
-            url,
-            headers={
-                "Authorization": f"Bearer {get_chatbot().api_key}",
-                "Content-Type": "application/json",
-            },
-        ) as response:
-            response.raise_for_status()
-            result = []
-            resp_json = await response.json()
-            for model in resp_json.get("data"):
-                result.append(model.get("id"))
-
-            return result
 
 
 def create_model_key(model_name: str) -> InlineKeyboardMarkup:
@@ -107,9 +95,11 @@ async def change_model_callback_handler(
     model = query.data.replace("change_model_", "")
 
     context.user_data["model"] = model
-
+    message = await translate(
+        f"Model changed to `{model}`. \n\nSend /new to start a new chat session."
+    )
     await query.edit_message_text(
-        f"Model changed to `{model}`. \n\nSend /new to start a new chat session.",
+        message,
         parse_mode=ParseMode.MARKDOWN,
     )
 
@@ -118,7 +108,8 @@ async def start_system_prompt(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
     """Start a system prompt"""
-    await update.message.reply_text("Send me a system prompt. If you want to clear the system prompt, send `clear` now.")
+    message = await translate("system_prompt_instructions")
+    await update.message.reply_text(message)
     return SYSTEM_PROMPT_SP
 
 
@@ -126,7 +117,8 @@ async def cancelled_system_prompt(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
     """Cancel the system prompt"""
-    await update.message.reply_text("System prompt change cancelled.")
+    message = await translate("System prompt change cancelled.")
+    await update.message.reply_text(message)
     return ConversationHandler.END
 
 
@@ -135,10 +127,12 @@ async def get_system_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     system_prompt = update.message.text
     if system_prompt.lower().strip() == "clear":
         context.user_data.pop("system_prompt", None)
-        await update.message.reply_text("System prompt cleared.")
+        message = await translate("System prompt cleared.")
+        await update.message.reply_text(message)
     else:
         context.user_data["system_prompt"] = system_prompt
-        await update.message.reply_text("System prompt changed.")
+        message = await translate("System prompt changed.")
+        await update.message.reply_text(message)
     new_chat(context)
     return ConversationHandler.END
 
@@ -201,7 +195,7 @@ async def info_command_handler(
 ) -> None:
     """Get info about the bot"""
     message = f"""**__Conversation Info:__**
-**Model**: `{context.user_data.get("model", "llama3-8b-8192")}`
+**Model**: `{context.user_data.get("model", await get_default_model())}`
 """
 
     # if context.user_data.get("system_prompt") is not None:
