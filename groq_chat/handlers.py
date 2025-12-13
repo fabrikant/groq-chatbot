@@ -66,8 +66,6 @@ async def new_command_handler(
     await update.message.reply_text(message)
 
 
-
-
 def create_model_key(model_name: str) -> InlineKeyboardMarkup:
     return InlineKeyboardButton(model_name, callback_data="change_model_" + model_name)
 
@@ -98,6 +96,7 @@ async def change_model_callback_handler(
     message = await translate(
         f"Model changed to `{model}`. \n\nSend /new to start a new chat session."
     )
+
     await query.edit_message_text(
         message,
         parse_mode=ParseMode.MARKDOWN,
@@ -140,12 +139,10 @@ async def get_system_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle messages"""
     if "model" not in context.user_data:
-        context.user_data["model"] = "llama-3.1-8b-instant"
+        context.user_data["model"] = await get_default_model()
 
     if "messages" not in context.user_data:
         context.user_data["messages"] = []
-
-    init_msg = await update.message.reply_text("generating_response")
 
     message = update.message.text
     if not message:
@@ -153,35 +150,28 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     await update.message.chat.send_action(ChatAction.TYPING)
     full_output_message = ""
-    current_text = ""
+    buffer = ""
     async for chunk in generate_response(message, context):
         if chunk:
             full_output_message += chunk
-            potential_text = current_text + chunk
-            potential_formatted = format_message(potential_text)
-            if len(potential_formatted) > 4096:
-                # Отправить текущее сообщение
-                if current_text:
-                    send_message = format_message(current_text)
-                    await update.message.reply_text(
-                        send_message,
-                        parse_mode=ParseMode.HTML,
-                        disable_web_page_preview=True,
-                    )
-                # Начать новое сообщение
-                current_text = chunk
-                init_msg = await update.message.reply_text(
-                    format_message(current_text),
+            buffer += chunk
+            if len(buffer) > 3000:  # Send message when buffer exceeds 3000 chars
+                formatted_buffer = format_message(buffer)
+                await update.message.reply_text(
+                    formatted_buffer,
                     parse_mode=ParseMode.HTML,
                     disable_web_page_preview=True,
                 )
-            else:
-                current_text = potential_text
-                init_msg = await init_msg.edit_text(
-                    potential_formatted,
-                    parse_mode=ParseMode.HTML,
-                    disable_web_page_preview=True,
-                )
+                buffer = ""  # Reset buffer
+    # Send remaining buffer if any
+    if buffer:
+        formatted_buffer = format_message(buffer)
+        await update.message.reply_text(
+            formatted_buffer,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True,
+        )
+    # Add full response to context
     context.user_data["messages"] = context.user_data.get("messages", []) + [
         {
             "role": "assistant",
