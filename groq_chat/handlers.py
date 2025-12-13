@@ -39,7 +39,8 @@ async def start(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def help_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
-    help_text = await translate("""
+    help_text = await translate(
+        """
 Basic commands:
 /start - Start the bot
 /help - Get help. Shows this message
@@ -51,7 +52,8 @@ Chat commands:
 /info - Get info about the current chat session.
 
 Send a message to the bot to generate a response.
-""")
+"""
+    )
     await update.message.reply_text(help_text)
 
 
@@ -87,19 +89,25 @@ async def get_groq_models() -> dict:
             return result
 
 
+def create_model_key(model_name: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardButton(model_name, callback_data="change_model_" + model_name)
+
+
 async def model_command_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
 
     models = await get_groq_models()
-    reply_markup = InlineKeyboardMarkup(
-        [
-            [InlineKeyboardButton(model, callback_data="change_model_" + model)]
-            for model in models
-        ]
+    button_list = [
+        [create_model_key(models[i]), create_model_key(models[i + 1])]
+        for i in range(0, len(models) - len(models) % 2, 2)
+    ]
+    if len(models) % 2 == 1:
+        button_list.append([create_model_key(models[-1])])
+    reply_markup = InlineKeyboardMarkup(button_list)
+    await update.message.reply_text(
+        await translate("select_model"), reply_markup=reply_markup
     )
-
-    await update.message.reply_text(await translate("select_model"), reply_markup=reply_markup)
 
 
 async def change_model_callback_handler(
@@ -112,7 +120,9 @@ async def change_model_callback_handler(
     context.user_data["model"] = model
 
     await query.edit_message_text(
-        await translate(f"Model changed to `{model}`. \n\nSend /new to start a new chat session."),
+        await translate(
+            f"Model changed to `{model}`. \n\nSend /new to start a new chat session."
+        ),
         parse_mode=ParseMode.MARKDOWN,
     )
 
