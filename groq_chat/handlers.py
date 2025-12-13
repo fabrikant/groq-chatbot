@@ -4,13 +4,10 @@ import logging
 import traceback
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler
-from telegram.error import NetworkError, BadRequest
 from telegram.constants import ChatAction, ParseMode
 from groq_chat.html_format import format_message
-from groq_chat.groq_chat import chatbot, generate_response
-import asyncio
+from groq_chat.groq_chat import get_chatbot, generate_response
 import aiohttp
-from translate.translate import translate
 
 SYSTEM_PROMPT_SP = 1
 CANCEL_SP = 2
@@ -31,16 +28,13 @@ def new_chat(context: ContextTypes.DEFAULT_TYPE) -> None:
 async def start(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
     user = update.effective_user
-    message = await translate(
-        f"Hi {user.mention_html()}!\n\nStart sending messages with me to generate a response.\n\nSend /new to start a new chat session."
-    )
+    message = f"Hi {user.mention_html()}!\n\nStart sending messages with me to generate a response.\n\nSend /new to start a new chat session."
     await update.message.reply_html(message)
 
 
 async def help_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
-    help_text = await translate(
-        """
+    help_text = """
 Basic commands:
 /start - Start the bot
 /help - Get help. Shows this message
@@ -53,7 +47,6 @@ Chat commands:
 
 Send a message to the bot to generate a response.
 """
-    )
     await update.message.reply_text(help_text)
 
 
@@ -62,9 +55,7 @@ async def new_command_handler(
 ) -> None:
     """Start a new chat session"""
     new_chat(context)
-    await update.message.reply_text(
-        await translate("New chat session started.\n\nSwitch models with /model.")
-    )
+    await update.message.reply_text("New chat session started.\n\nSwitch models with /model.")
 
 
 async def get_groq_models() -> dict:
@@ -76,7 +67,7 @@ async def get_groq_models() -> dict:
         async with session.get(
             url,
             headers={
-                "Authorization": f"Bearer {chatbot.api_key}",
+                "Authorization": f"Bearer {get_chatbot().api_key}",
                 "Content-Type": "application/json",
             },
         ) as response:
@@ -105,9 +96,7 @@ async def model_command_handler(
     if len(models) % 2 == 1:
         button_list.append([create_model_key(models[-1])])
     reply_markup = InlineKeyboardMarkup(button_list)
-    await update.message.reply_text(
-        await translate("select_model"), reply_markup=reply_markup
-    )
+    await update.message.reply_text("select_model", reply_markup=reply_markup)
 
 
 async def change_model_callback_handler(
@@ -120,9 +109,7 @@ async def change_model_callback_handler(
     context.user_data["model"] = model
 
     await query.edit_message_text(
-        await translate(
-            f"Model changed to `{model}`. \n\nSend /new to start a new chat session."
-        ),
+        f"Model changed to `{model}`. \n\nSend /new to start a new chat session.",
         parse_mode=ParseMode.MARKDOWN,
     )
 
@@ -131,11 +118,7 @@ async def start_system_prompt(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
     """Start a system prompt"""
-    await update.message.reply_text(
-        await translate(
-            "Send me a system prompt. If you want to clear the system prompt, send `clear` now."
-        )
-    )
+    await update.message.reply_text("Send me a system prompt. If you want to clear the system prompt, send `clear` now.")
     return SYSTEM_PROMPT_SP
 
 
@@ -143,7 +126,7 @@ async def cancelled_system_prompt(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
     """Cancel the system prompt"""
-    await update.message.reply_text(await translate("System prompt change cancelled."))
+    await update.message.reply_text("System prompt change cancelled.")
     return ConversationHandler.END
 
 
@@ -152,10 +135,10 @@ async def get_system_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     system_prompt = update.message.text
     if system_prompt.lower().strip() == "clear":
         context.user_data.pop("system_prompt", None)
-        await update.message.reply_text(await translate("System prompt cleared."))
+        await update.message.reply_text("System prompt cleared.")
     else:
         context.user_data["system_prompt"] = system_prompt
-        await update.message.reply_text(await translate("System prompt changed."))
+        await update.message.reply_text("System prompt changed.")
     new_chat(context)
     return ConversationHandler.END
 
@@ -168,20 +151,16 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if "messages" not in context.user_data:
         context.user_data["messages"] = []
 
-    init_msg = await update.message.reply_text(await translate("generating_response"))
+    init_msg = await update.message.reply_text("generating_response")
 
     message = update.message.text
     if not message:
         return
 
-    asyncio.run_coroutine_threadsafe(
-        update.message.chat.send_action(ChatAction.TYPING),
-        loop=asyncio.get_event_loop(),
-    )
+    await update.message.chat.send_action(ChatAction.TYPING)
     full_output_message = ""
     current_text = ""
-    init_msg = await update.message.reply_text("generating_response")
-    for chunk in generate_response(message, context):
+    async for chunk in generate_response(message, context):
         if chunk:
             full_output_message += chunk
             potential_text = current_text + chunk
@@ -221,11 +200,9 @@ async def info_command_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
     """Get info about the bot"""
-    message = await translate(
-        f"""**__Conversation Info:__**
+    message = f"""**__Conversation Info:__**
 **Model**: `{context.user_data.get("model", "llama3-8b-8192")}`
 """
-    )
 
     # if context.user_data.get("system_prompt") is not None:
     #     message += f"\n**System Prompt**: \n```\n{context.user_data.get("system_prompt")}\n```"
@@ -249,7 +226,7 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
     # Build the message with some markup and additional information about what happened.
     # You might need to add some logic to deal with messages longer than the 4096 character limit.
     update_str = update.to_dict() if isinstance(update, Update) else str(update)
-    message = await translate(
+    message = (
         "An exception was raised while handling an update\n"
         f"<pre>update = {html.escape(json.dumps(update_str, indent=2, ensure_ascii=False))}"
         "</pre>\n\n"

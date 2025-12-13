@@ -22,12 +22,14 @@ from groq_chat.handlers import (
     info_command_handler,
     error_handler,
 )
+from groq_chat.groq_chat import set_chatbot
+from groq import AsyncGroq
+import httpx
 from groq_chat.filters import AuthFilter, MessageFilter
 from dotenv import load_dotenv
 from mongopersistence import MongoPersistence
 import logging
 from telegram import Update, BotCommand
-from translate.translate import translate
 
 load_dotenv()
 
@@ -52,11 +54,11 @@ if os.getenv("MONGODB_URL"):
 async def set_bot_commands(app):
 
     commands = [
-        BotCommand("start", await translate("start")),
-        BotCommand("help", await translate("show_help")),
-        BotCommand("info", await translate("bot_info")),
-        BotCommand("new", await translate("new_conversation")),
-        BotCommand("model", await translate("choose_model")),
+        BotCommand("start", "start"),
+        BotCommand("help", "show_help"),
+        BotCommand("info", "bot_info"),
+        BotCommand("new", "new_conversation"),
+        BotCommand("model", "choose_model"),
         # BotCommand("system_prompt", await translate("system_prompt")),
         # BotCommand("cancel", await translate("cancel_prompt")),
     ]
@@ -64,6 +66,16 @@ async def set_bot_commands(app):
     await app.bot.set_my_commands(commands)
     logger.info("Команды бота установлены в Telegram UI")
 
+
+async def init_chatbot(app):
+    # Disable proxies to avoid httpx issues
+    os.environ['HTTP_PROXY'] = ''
+    os.environ['HTTPS_PROXY'] = ''
+    set_chatbot(AsyncGroq(api_key=os.getenv("GROQ_API_KEY"), http_client=httpx.AsyncClient()))
+
+async def prepare_bot(app):
+    await set_bot_commands(app)
+    await init_chatbot(app)
 
 def start_bot():
     logger.info("Starting bot")
@@ -76,6 +88,9 @@ def start_bot():
 
     # Build the app
     app = app_builder.build()
+
+    # Initialize chatbot after app build
+    # set_chatbot(AsyncGroq(api_key=os.getenv("GROQ_API_KEY"), http_client=aiohttp.ClientSession()))
 
     app.add_handler(CommandHandler("start", start, filters=AuthFilter))
     app.add_handler(CommandHandler("help", help_command, filters=AuthFilter))
@@ -109,9 +124,9 @@ def start_bot():
 
     app.add_error_handler(error_handler)
     if app.post_init:
-        app.post_init.append(set_bot_commands)
+        app.post_init.append(prepare_bot)
     else:
-        app.post_init = set_bot_commands
+        app.post_init = prepare_bot
 
     # Run the bot until the user presses Ctrl-C
     app.run_polling(allowed_updates=Update.ALL_TYPES)

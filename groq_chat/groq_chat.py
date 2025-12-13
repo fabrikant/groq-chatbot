@@ -1,20 +1,21 @@
-from groq import Groq
-import httpx
 from dotenv import load_dotenv
-import os
 import groq
 from telegram.ext import ContextTypes
 
 load_dotenv()
 
 # Create a ChatBot
-chatbot = Groq(
-    api_key=os.environ.get("GROQ_API_KEY"),
-    http_client=httpx.Client(),
-)
+chatbot = None
+
+def get_chatbot():
+    return chatbot
+
+def set_chatbot(cb):
+    global chatbot
+    chatbot = cb
 
 
-def generate_response(message: str, context: ContextTypes.DEFAULT_TYPE):
+async def generate_response(message: str, context: ContextTypes.DEFAULT_TYPE):
     """Generate a response to a message"""
     context.user_data["messages"] = context.user_data.get("messages", []) + [
         {
@@ -24,7 +25,7 @@ def generate_response(message: str, context: ContextTypes.DEFAULT_TYPE):
     ]
     response_queue = ""
     try:
-        for resp in chatbot.chat.completions.create(
+        async for resp in await chatbot.chat.completions.create(
             messages=context.user_data.get("messages"),
             model=context.user_data.get("model", "llama3-8b-8192"),
             stream=True,
