@@ -79,7 +79,7 @@ def sanitaze_stack(stack: list) -> None:
 
 async def send_chunk(update: Update, text: str, stack: list) -> None:
     # Сначала выделяем таблицы, если они есть
-    # text = wrap_ascii_tables(text)
+    text = wrap_ascii_tables(text)
 
     # 1. Формируем префикс из открытых ранее тегов
     prefix = "".join(sanitaze_stack(stack))
@@ -122,7 +122,6 @@ async def send_chunk(update: Update, text: str, stack: list) -> None:
 
     # 4. Сборка и отправка
     final_text = f"{prefix}{text}{postfix}"
-
     try:
         await update.message.reply_text(
             final_text, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True
