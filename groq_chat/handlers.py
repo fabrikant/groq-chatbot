@@ -196,7 +196,8 @@ async def model_command_handler(
     if len(models) % 2 == 1:
         button_list.append([create_model_key(models[-1])])
     reply_markup = InlineKeyboardMarkup(button_list)
-    await update.message.reply_text("select_model", reply_markup=reply_markup)
+    message = await translate("select_model")
+    await update.message.reply_text(message, reply_markup=reply_markup)
 
 
 async def change_model_callback_handler(
