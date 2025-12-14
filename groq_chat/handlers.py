@@ -9,6 +9,7 @@ from telegram.constants import ChatAction, ParseMode
 from groq_chat.groq_chat import generate_response
 from groq_chat.groq_chat import get_groq_models, get_default_model
 from translate.translate import translate
+from groq_chat.tables import wrap_ascii_tables
 
 logger = logging.getLogger(__name__)
 SYSTEM_PROMPT_SP = 1
@@ -77,6 +78,9 @@ def sanitaze_stack(stack: list) -> None:
 
 
 async def send_chunk(update: Update, text: str, stack: list) -> None:
+    # Сначала выделяем таблицы, если они есть
+    # text = wrap_ascii_tables(text)
+
     # 1. Формируем префикс из открытых ранее тегов
     prefix = "".join(sanitaze_stack(stack))
 
@@ -124,7 +128,7 @@ async def send_chunk(update: Update, text: str, stack: list) -> None:
             final_text, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True
         )
     except Exception as e:
-        logger.warning(f"MarkdownV2 parse error: {e}, sending without parse mode.")
+        logger.warning(f"Markdown parse error: {e}, sending without parse mode.")
         await update.message.reply_text(final_text, parse_mode=None)
 
 
