@@ -9,8 +9,8 @@ from telegram.constants import ChatAction, ParseMode
 from groq_chat.groq_chat import generate_response
 from groq_chat.groq_chat import get_groq_models, get_default_model
 from translate.translate import translate
-import mistune
 
+logger = logging.getLogger(__name__)
 SYSTEM_PROMPT_SP = 1
 CANCEL_SP = 2
 
@@ -85,7 +85,7 @@ async def send_chunk(update: Update, text: str, stack: list) -> None:
     last_pos = 0
     for match in MARKDOWN_PATTERN.finditer(text):
         token = match.group(0)
-        
+
         # Проверяем, находимся ли мы СЕЙЧАС внутри блока кода
         is_in_block_code = stack and stack[-1].startswith("```")
 
@@ -99,8 +99,8 @@ async def send_chunk(update: Update, text: str, stack: list) -> None:
         else:
             # Если мы снаружи, обрабатываем все теги
             if stack and (
-                (token.startswith("```") and stack[-1].startswith("```")) or 
-                (token == stack[-1])
+                (token.startswith("```") and stack[-1].startswith("```"))
+                or (token == stack[-1])
             ):
                 stack.pop()
             else:
@@ -110,31 +110,21 @@ async def send_chunk(update: Update, text: str, stack: list) -> None:
     closing_tags = []
     for tag in reversed(stack):
         if tag.startswith("```"):
-            closing_tags.append("```") # Всегда закрываем просто тремя кавычками
+            closing_tags.append("```")  # Всегда закрываем просто тремя кавычками
         else:
             closing_tags.append(tag)
 
-    # Используем модифицированный sanitaze_stack для закрывающих тегов
-    # ВНИМАНИЕ: для постфикса лучше использовать простую склейку, 
-    # чтобы не плодить лишние \n после закрытия
-    postfix = "".join([f"\n{t}\n" if t.startswith("```") else t for t in closing_tags])
+    postfix = "".join(sanitaze_stack(closing_tags))
 
     # 4. Сборка и отправка
     final_text = f"{prefix}{text}{postfix}"
-    
-    # HTML рендеринг
-    markdown_parser = mistune.create_markdown()
-    # Важно: mistune сам экранирует HTML-чувствительные знаки, 
-    # повторный html.escape может испортить разметку.
-    html_text = markdown_parser(final_text)
-    
+
     try:
         await update.message.reply_text(
-            html_text, 
-            parse_mode=ParseMode.HTML, 
-            disable_web_page_preview=True
+            final_text, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True
         )
-    except Exception:
+    except Exception as e:
+        logger.warning(f"MarkdownV2 parse error: {e}, sending without parse mode.")
         await update.message.reply_text(final_text, parse_mode=None)
 
 
@@ -276,7 +266,7 @@ async def info_command_handler(
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Log the error and send a telegram message to notify the developer."""
     # Log the error before we do anything else, so we can see it even if something breaks.
-    logging.getLogger(__name__).error(
+    logger.error(
         "Exception while handling an update:", exc_info=context.error
     )
 
