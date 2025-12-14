@@ -30,10 +30,11 @@ from dotenv import load_dotenv
 from mongopersistence import MongoPersistence
 import logging
 from telegram import Update, BotCommand
+from translate.translate import translate
 
 load_dotenv()
 
-
+"start"
 logger = logging.getLogger(__name__)
 
 persistence = None
@@ -54,11 +55,11 @@ if os.getenv("MONGODB_URL"):
 async def set_bot_commands(app):
 
     commands = [
-        BotCommand("start", "start"),
-        BotCommand("help", "show_help"),
-        BotCommand("info", "bot_info"),
-        BotCommand("new", "new_conversation"),
-        BotCommand("model", "choose_model"),
+        BotCommand("start", await translate("start")),
+        BotCommand("help", await translate("show_help")),
+        BotCommand("info", await translate("bot_info")),
+        BotCommand("new", await translate("new_conversation")),
+        BotCommand("model", await translate("choose_model")),
         # BotCommand("system_prompt", await translate("system_prompt")),
         # BotCommand("cancel", await translate("cancel_prompt")),
     ]
@@ -68,11 +69,15 @@ async def set_bot_commands(app):
 
 
 async def init_chatbot(app):
-    set_chatbot(AsyncGroq(api_key=os.getenv("GROQ_API_KEY"), http_client=httpx.AsyncClient()))
+    set_chatbot(
+        AsyncGroq(api_key=os.getenv("GROQ_API_KEY"), http_client=httpx.AsyncClient())
+    )
+
 
 async def prepare_bot(app):
     await set_bot_commands(app)
     await init_chatbot(app)
+
 
 def start_bot():
     logger.info("Starting bot")
@@ -87,11 +92,11 @@ def start_bot():
     app = app_builder.build()
 
     app.add_handler(CommandHandler("start", start, filters=AuthFilter))
-    app.add_handler(CommandHandler("help", help_command, filters=AuthFilter))
-    app.add_handler(CommandHandler("new", new_command_handler, filters=AuthFilter))
     app.add_handler(CommandHandler("model", model_command_handler, filters=AuthFilter))
     app.add_handler(CommandHandler("info", info_command_handler, filters=AuthFilter))
-
+    app.add_handler(CommandHandler("new", new_command_handler, filters=AuthFilter))
+    app.add_handler(CommandHandler("help", help_command, filters=AuthFilter))
+    
     app.add_handler(
         ConversationHandler(
             entry_points=[

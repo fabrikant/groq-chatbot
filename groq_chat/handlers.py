@@ -145,12 +145,14 @@ async def start(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
     message = await translate(
         (
-            f"Hi {user.mention_html()}!\n\n"
-            "Start sending messages with me to generate a response.\n\n"
-            "Send /new to start a new chat session."
+            f"**Hi {user.mention_html()}!**\n"
+            "Start sending messages with me to generate a response.\n"
+            "Send /new to start a new chat session.\n" 
+            "Send /model to change the model used to generate responses.\n"
+            "Send /help to see available commands."
         )
     )
-    await update.message.reply_html(message)
+    await update.message.reply_markdown(message)
 
 
 async def help_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
