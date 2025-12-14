@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 import groq
 from telegram.ext import ContextTypes
-
+import os
 
 load_dotenv()
 
@@ -32,16 +32,16 @@ async def get_default_model() -> str:
     global available_models
     if not available_models:
         await get_groq_models()
-
+    default_model_name = os.getenv("DEFAULT_GROQ_MODEL", "llama-3.1-8b-instant")
     if available_models:
-        if "llama3-8b-8192" in available_models:
-            return "llama3-8b-8192"
+        if default_model_name in available_models:
+            return default_model_name
         elif len(available_models) > 0:
             return available_models[0]
         else:
-            return "llama3-8b-8192"  # Fallback default model
+            return default_model_name
     else:
-        return "llama3-8b-8192"  # Fallback default model
+        return default_model_name
 
 
 async def generate_response(message: str, context: ContextTypes.DEFAULT_TYPE):

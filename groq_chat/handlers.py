@@ -1,4 +1,5 @@
 import html
+import re
 import json
 import logging
 import traceback
@@ -12,6 +13,98 @@ from translate.translate import translate
 
 SYSTEM_PROMPT_SP = 1
 CANCEL_SP = 2
+
+# Регулярное выражение для захвата тегов. 
+# Группа для кода ``` дополнена захватом названия языка (например, ```python)
+MARKDOWN_PATTERN = re.compile(r'(```[a-zA-Z]*|\*\*|__|~~|\|\||[_*`])')
+
+async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if "messages" not in context.user_data:
+        context.user_data["messages"] = []
+
+    message = update.message.text
+    if not message: return
+
+    await update.message.chat.send_action(ChatAction.TYPING)
+    
+    full_output_message = ""
+    buffer = ""
+    markdown_stack = [] # Здесь храним полные открывающие теги, например ['```python', '**']
+
+    async for chunk in generate_response(message, context):
+        if chunk:
+            full_output_message += chunk
+            buffer += chunk
+            
+            # Лимит Telegram 4096, но с учетом запаса на теги берем 3500
+            if len(buffer) > 3500:
+                # Поиск последнего пробела для предотвращения разрыва слова
+                split_index = buffer.rfind(' ')
+                if split_index == -1: split_index = len(buffer)
+                
+                chunk_to_send = buffer[:split_index]
+                buffer = buffer[split_index:].lstrip()
+                
+                await send_chunk(update, chunk_to_send, markdown_stack)
+
+    if buffer:
+        await send_chunk(update, buffer, markdown_stack)
+
+    context.user_data["messages"].append({"role": "assistant", "content": full_output_message})
+
+async def send_chunk(update: Update, text: str, stack: list) -> None:
+    """
+    stack: список открытых тегов, который модифицируется внутри функции (передается по ссылке)
+    """
+    # 1. Формируем префикс из того, что было открыто в прошлых сообщениях (FIFO)
+    prefix = "".join(stack)
+    
+    # 2. Анализируем текущий текст на предмет изменения состояния стека
+    # Используем finditer, чтобы точно определять тип тега
+    tokens = MARKDOWN_PATTERN.findall(text)
+    
+    for token in tokens:
+        if stack:
+            last_tag = stack[-1]
+            
+            # Логика закрытия:
+            # Если это блок кода (начинается на ```), он закрывает любой открытый блок кода
+            is_closing_code = token.startswith('```') and last_tag.startswith('```')
+            # Для остальных тегов — полное совпадение
+            is_closing_other = token == last_tag
+            
+            if is_closing_code or is_closing_other:
+                stack.pop()
+                continue
+        
+        # Если не закрыли, значит открываем новый
+        stack.append(token)
+
+    # 3. Формируем постфикс для закрытия текущего сообщения (LIFO)
+    # Важно: если в стеке '```python', закрыть его нужно просто '```'
+    closing_tags = []
+    for tag in reversed(stack):
+        if tag.startswith('```'):
+            closing_tags.append('```')
+        else:
+            closing_tags.append(tag)
+    
+    postfix = "".join(closing_tags)
+
+    # 4. Сборка и отправка
+    final_text = f"{prefix}{text}{postfix}"
+    html_text = format_message(final_text)
+    try:
+        await update.message.reply_text(
+            html_text,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True
+        )
+    except Exception:
+        # В случае ошибки парсинга (например, из-за спецсимволов V2), 
+        # отправляем как обычный текст
+        await update.message.reply_text(final_text, parse_mode=None)
+
 
 
 def new_chat(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -136,48 +229,7 @@ async def get_system_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     return ConversationHandler.END
 
 
-async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle messages"""
-    if "model" not in context.user_data:
-        context.user_data["model"] = await get_default_model()
 
-    if "messages" not in context.user_data:
-        context.user_data["messages"] = []
-
-    message = update.message.text
-    if not message:
-        return
-
-    await update.message.chat.send_action(ChatAction.TYPING)
-    full_output_message = ""
-    buffer = ""
-    async for chunk in generate_response(message, context):
-        if chunk:
-            full_output_message += chunk
-            buffer += chunk
-            if len(buffer) > 3000:  # Send message when buffer exceeds 3000 chars
-                formatted_buffer = format_message(buffer)
-                await update.message.reply_text(
-                    formatted_buffer,
-                    parse_mode=ParseMode.HTML,
-                    disable_web_page_preview=True,
-                )
-                buffer = ""  # Reset buffer
-    # Send remaining buffer if any
-    if buffer:
-        formatted_buffer = format_message(buffer)
-        await update.message.reply_text(
-            formatted_buffer,
-            parse_mode=ParseMode.HTML,
-            disable_web_page_preview=True,
-        )
-    # Add full response to context
-    context.user_data["messages"] = context.user_data.get("messages", []) + [
-        {
-            "role": "assistant",
-            "content": full_output_message,
-        }
-    ]
 
 
 async def info_command_handler(
