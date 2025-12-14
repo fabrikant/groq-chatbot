@@ -14,8 +14,7 @@ import mistune
 SYSTEM_PROMPT_SP = 1
 CANCEL_SP = 2
 
-# Регулярное выражение для захвата тегов.
-# Группа для кода ``` дополнена захватом названия языка (например, ```python)
+# Захватываем блоки кода, жирный, подчеркивание, зачеркивание, спойлер, курсив и инлайн-код
 MARKDOWN_PATTERN = re.compile(r"(```[a-zA-Z]*|\*\*|__|~~|\|\||[_*`])")
 
 
@@ -78,55 +77,64 @@ def sanitaze_stack(stack: list) -> None:
 
 
 async def send_chunk(update: Update, text: str, stack: list) -> None:
-    """
-    stack: список открытых тегов, который модифицируется внутри функции (передается по ссылке)
-    """
-    # 1. Формируем префикс из того, что было открыто в прошлых сообщениях (FIFO)
+    # 1. Формируем префикс из открытых ранее тегов
     prefix = "".join(sanitaze_stack(stack))
 
-    # 2. Анализируем текущий текст на предмет изменения состояния стека
-    # Используем finditer, чтобы точно определять тип тега
-    tokens = MARKDOWN_PATTERN.findall(text)
+    # 2. Анализируем текст по частям
+    # Мы разбиваем текст на токены и обычный текст между ними
+    last_pos = 0
+    for match in MARKDOWN_PATTERN.finditer(text):
+        token = match.group(0)
+        
+        # Проверяем, находимся ли мы СЕЙЧАС внутри блока кода
+        is_in_block_code = stack and stack[-1].startswith("```")
 
-    for token in tokens:
-        if stack:
-            last_tag = stack[-1]
-
-            # Логика закрытия:
-            # Если это блок кода (начинается на ```), он закрывает любой открытый блок кода
-            is_closing_code = token.startswith("```") and last_tag.startswith("```")
-            # Для остальных тегов — полное совпадение
-            is_closing_other = token == last_tag
-
-            if is_closing_code or is_closing_other:
+        if is_in_block_code:
+            # Если мы внутри блока кода, нас интересует ТОЛЬКО закрывающий тег кода
+            if token.startswith("```"):
                 stack.pop()
+            else:
+                # Все остальные токены (** , __ и т.д.) игнорируем, пока не выйдем из кода
                 continue
+        else:
+            # Если мы снаружи, обрабатываем все теги
+            if stack and (
+                (token.startswith("```") and stack[-1].startswith("```")) or 
+                (token == stack[-1])
+            ):
+                stack.pop()
+            else:
+                stack.append(token)
 
-        # Если не закрыли, значит открываем новый
-        stack.append(token)
-
-    # 3. Формируем постфикс для закрытия текущего сообщения (LIFO)
-    # Важно: если в стеке '```python', закрыть его нужно просто '```'
+    # 3. Формируем постфикс (LIFO)
     closing_tags = []
     for tag in reversed(stack):
         if tag.startswith("```"):
-            closing_tags.append("```")
+            closing_tags.append("```") # Всегда закрываем просто тремя кавычками
         else:
             closing_tags.append(tag)
 
-    postfix = "".join(sanitaze_stack(closing_tags))
+    # Используем модифицированный sanitaze_stack для закрывающих тегов
+    # ВНИМАНИЕ: для постфикса лучше использовать простую склейку, 
+    # чтобы не плодить лишние \n после закрытия
+    postfix = "".join([f"\n{t}\n" if t.startswith("```") else t for t in closing_tags])
 
     # 4. Сборка и отправка
     final_text = f"{prefix}{text}{postfix}"
+    
+    # HTML рендеринг
     markdown_parser = mistune.create_markdown()
-    html_text = markdown_parser(html.escape(final_text))
+    # Важно: mistune сам экранирует HTML-чувствительные знаки, 
+    # повторный html.escape может испортить разметку.
+    html_text = markdown_parser(final_text)
+    
     try:
         await update.message.reply_text(
-            html_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True
+            html_text, 
+            parse_mode=ParseMode.HTML, 
+            disable_web_page_preview=True
         )
     except Exception:
-        # В случае ошибки парсинга (например, из-за спецсимволов V2),
-        # отправляем как обычный текст
         await update.message.reply_text(final_text, parse_mode=None)
 
 
