@@ -41,9 +41,16 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             buffer += chunk
 
             # Лимит Telegram 4096, но с учетом запаса на теги берем 3500
-            if len(buffer) > 3500:
-                # Поиск последнего пробела для предотвращения разрыва слова
-                split_index = buffer.rfind(" ")
+            while len(buffer) > 3500:
+
+                # 1. Сначала пытаемся найти последний перенос строки
+                split_index = buffer.rfind("\n")
+
+                # 2. Если переноса строки нет, ищем последний пробел
+                if split_index == -1:
+                    split_index = buffer.rfind(" ")
+
+                # 3. Если нет ни переноса, ни пробела, режем по лимиту
                 if split_index == -1:
                     split_index = len(buffer)
 
@@ -63,11 +70,12 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 def sanitaze_stack(stack: list) -> None:
     prefix_parts = []
     for tag in stack:
-        if tag.startswith('```'):
+        if tag.startswith("```"):
             prefix_parts.append(f"\n{tag}\n")
         else:
             prefix_parts.append(tag)
     return prefix_parts
+
 
 async def send_chunk(update: Update, text: str, stack: list) -> None:
     """
@@ -104,14 +112,14 @@ async def send_chunk(update: Update, text: str, stack: list) -> None:
         if tag.startswith("```"):
             closing_tags.append("```")
         else:
-            closing_tags.append("tag")
+            closing_tags.append(tag)
 
     postfix = "".join(sanitaze_stack(closing_tags))
 
     # 4. Сборка и отправка
     final_text = f"{prefix}{text}{postfix}"
     markdown_parser = mistune.create_markdown()
-    html_text = markdown_parser(final_text)
+    html_text = markdown_parser(html.escape(final_text))
     try:
         await update.message.reply_text(
             html_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True
