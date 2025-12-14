@@ -6,77 +6,94 @@ import traceback
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler
 from telegram.constants import ChatAction, ParseMode
-from groq_chat.html_format import format_message
 from groq_chat.groq_chat import generate_response
 from groq_chat.groq_chat import get_groq_models, get_default_model
 from translate.translate import translate
+import mistune
 
 SYSTEM_PROMPT_SP = 1
 CANCEL_SP = 2
 
-# Регулярное выражение для захвата тегов. 
+# Регулярное выражение для захвата тегов.
 # Группа для кода ``` дополнена захватом названия языка (например, ```python)
-MARKDOWN_PATTERN = re.compile(r'(```[a-zA-Z]*|\*\*|__|~~|\|\||[_*`])')
+MARKDOWN_PATTERN = re.compile(r"(```[a-zA-Z]*|\*\*|__|~~|\|\||[_*`])")
+
 
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if "messages" not in context.user_data:
         context.user_data["messages"] = []
 
     message = update.message.text
-    if not message: return
+    if not message:
+        return
 
     await update.message.chat.send_action(ChatAction.TYPING)
-    
+
     full_output_message = ""
     buffer = ""
-    markdown_stack = [] # Здесь храним полные открывающие теги, например ['```python', '**']
+    markdown_stack = (
+        []
+    )  # Здесь храним полные открывающие теги, например ['```python', '**']
 
     async for chunk in generate_response(message, context):
         if chunk:
             full_output_message += chunk
             buffer += chunk
-            
+
             # Лимит Telegram 4096, но с учетом запаса на теги берем 3500
             if len(buffer) > 3500:
                 # Поиск последнего пробела для предотвращения разрыва слова
-                split_index = buffer.rfind(' ')
-                if split_index == -1: split_index = len(buffer)
-                
+                split_index = buffer.rfind(" ")
+                if split_index == -1:
+                    split_index = len(buffer)
+
                 chunk_to_send = buffer[:split_index]
                 buffer = buffer[split_index:].lstrip()
-                
+
                 await send_chunk(update, chunk_to_send, markdown_stack)
 
     if buffer:
         await send_chunk(update, buffer, markdown_stack)
 
-    context.user_data["messages"].append({"role": "assistant", "content": full_output_message})
+    context.user_data["messages"].append(
+        {"role": "assistant", "content": full_output_message}
+    )
+
+
+def sanitaze_stack(stack: list) -> None:
+    prefix_parts = []
+    for tag in stack:
+        if tag.startswith('```'):
+            prefix_parts.append(f"\n{tag}\n")
+        else:
+            prefix_parts.append(tag)
+    return prefix_parts
 
 async def send_chunk(update: Update, text: str, stack: list) -> None:
     """
     stack: список открытых тегов, который модифицируется внутри функции (передается по ссылке)
     """
     # 1. Формируем префикс из того, что было открыто в прошлых сообщениях (FIFO)
-    prefix = "".join(stack)
-    
+    prefix = "".join(sanitaze_stack(stack))
+
     # 2. Анализируем текущий текст на предмет изменения состояния стека
     # Используем finditer, чтобы точно определять тип тега
     tokens = MARKDOWN_PATTERN.findall(text)
-    
+
     for token in tokens:
         if stack:
             last_tag = stack[-1]
-            
+
             # Логика закрытия:
             # Если это блок кода (начинается на ```), он закрывает любой открытый блок кода
-            is_closing_code = token.startswith('```') and last_tag.startswith('```')
+            is_closing_code = token.startswith("```") and last_tag.startswith("```")
             # Для остальных тегов — полное совпадение
             is_closing_other = token == last_tag
-            
+
             if is_closing_code or is_closing_other:
                 stack.pop()
                 continue
-        
+
         # Если не закрыли, значит открываем новый
         stack.append(token)
 
@@ -84,27 +101,25 @@ async def send_chunk(update: Update, text: str, stack: list) -> None:
     # Важно: если в стеке '```python', закрыть его нужно просто '```'
     closing_tags = []
     for tag in reversed(stack):
-        if tag.startswith('```'):
-            closing_tags.append('```')
+        if tag.startswith("```"):
+            closing_tags.append("```")
         else:
-            closing_tags.append(tag)
-    
-    postfix = "".join(closing_tags)
+            closing_tags.append("tag")
+
+    postfix = "".join(sanitaze_stack(closing_tags))
 
     # 4. Сборка и отправка
     final_text = f"{prefix}{text}{postfix}"
-    html_text = format_message(final_text)
+    markdown_parser = mistune.create_markdown()
+    html_text = markdown_parser(final_text)
     try:
         await update.message.reply_text(
-            html_text,
-            parse_mode=ParseMode.HTML,
-            disable_web_page_preview=True
+            html_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True
         )
     except Exception:
-        # В случае ошибки парсинга (например, из-за спецсимволов V2), 
+        # В случае ошибки парсинга (например, из-за спецсимволов V2),
         # отправляем как обычный текст
         await update.message.reply_text(final_text, parse_mode=None)
-
 
 
 def new_chat(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -227,9 +242,6 @@ async def get_system_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         await update.message.reply_text(message)
     new_chat(context)
     return ConversationHandler.END
-
-
-
 
 
 async def info_command_handler(
