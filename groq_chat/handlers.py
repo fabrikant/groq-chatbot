@@ -1,5 +1,4 @@
 import html
-import re
 import json
 import logging
 import traceback
@@ -9,14 +8,21 @@ from telegram.constants import ChatAction, ParseMode
 from groq_chat.groq_chat import generate_response
 from groq_chat.groq_chat import get_groq_models, get_default_model
 from translate.translate import translate
-from groq_chat.tables import wrap_ascii_tables
+import telegramify_markdown
+from telegramify_markdown.interpreters import (
+    TextInterpreter,
+    FileInterpreter,
+    MermaidInterpreter,
+    InterpreterChain,
+)
+from telegramify_markdown.type import ContentTypes
+
+import io  # Необходимо добавить в ваш файл
+from telegram import InputFile  # Необходимо добавить в ваш файл
 
 logger = logging.getLogger(__name__)
 SYSTEM_PROMPT_SP = 1
 CANCEL_SP = 2
-
-# Захватываем блоки кода, жирный, подчеркивание, зачеркивание, спойлер, курсив и инлайн-код
-MARKDOWN_PATTERN = re.compile(r"(```[a-zA-Z]*|\*\*|__|~~|\|\||[_*`])")
 
 
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -29,106 +35,49 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     await update.message.chat.send_action(ChatAction.TYPING)
 
-    full_output_message = ""
-    buffer = ""
-    markdown_stack = (
-        []
-    )  # Здесь храним полные открывающие теги, например ['```python', '**']
+    full_output_message = await generate_response(message, context)
 
-    async for chunk in generate_response(message, context):
-        if chunk:
-            full_output_message += chunk
-            buffer += chunk
+    # Create a custom interpreter chain
+    interpreter_chain = InterpreterChain(
+        [
+            TextInterpreter(),
+            MermaidInterpreter(session=None),
+        ]
+    )
 
-            # Лимит Telegram 4096, но с учетом запаса на теги берем 3500
-            while len(buffer) > 3500:
+    MAX_LEN = 4000
+    # Use the custom interpreter chain
+    boxs = await telegramify_markdown.telegramify(
+        content=full_output_message,
+        interpreters_use=interpreter_chain,
+        latex_escape=True,
+        normalize_whitespace=True,
+        max_word_count=MAX_LEN,  # The maximum number of words in a single message.
+    )
 
-                # 1. Сначала пытаемся найти последний перенос строки
-                split_index = buffer.rfind("\n")
+    for item in boxs:
 
-                # 2. Если переноса строки нет, ищем последний пробел
-                if split_index == -1:
-                    split_index = buffer.rfind(" ")
+        if item.content_type == ContentTypes.TEXT:
+            await update.message.reply_text(item.content, parse_mode="MarkdownV2")
+        elif item.content_type == ContentTypes.PHOTO:
+            await context.bot.send_photo(
+                chat_id=update.effective_chat.id,
+                photo=InputFile(io.BytesIO(item.file_data), filename=item.file_name),
+                caption=item.caption,
+                parse_mode="MarkdownV2",
+            )
 
-                # 3. Если нет ни переноса, ни пробела, режем по лимиту
-                if split_index == -1:
-                    split_index = len(buffer)
-
-                chunk_to_send = buffer[:split_index]
-                buffer = buffer[split_index:].lstrip()
-
-                await send_chunk(update, chunk_to_send, markdown_stack)
-
-    if buffer:
-        await send_chunk(update, buffer, markdown_stack)
+        elif item.content_type == ContentTypes.FILE:
+            await context.bot.send_document(
+                chat_id=update.effective_chat.id,
+                document=InputFile(io.BytesIO(item.file_data), filename=item.file_name),
+                caption=item.caption,
+                parse_mode="MarkdownV2",
+            )
 
     context.user_data["messages"].append(
         {"role": "assistant", "content": full_output_message}
     )
-
-
-def sanitaze_stack(stack: list) -> None:
-    prefix_parts = []
-    for tag in stack:
-        if tag.startswith("```"):
-            prefix_parts.append(f"\n{tag}\n")
-        else:
-            prefix_parts.append(tag)
-    return prefix_parts
-
-
-async def send_chunk(update: Update, text: str, stack: list) -> None:
-    # Сначала выделяем таблицы, если они есть
-    text = wrap_ascii_tables(text)
-
-    # 1. Формируем префикс из открытых ранее тегов
-    prefix = "".join(sanitaze_stack(stack))
-
-    # 2. Анализируем текст по частям
-    # Мы разбиваем текст на токены и обычный текст между ними
-    last_pos = 0
-    for match in MARKDOWN_PATTERN.finditer(text):
-        token = match.group(0)
-
-        # Проверяем, находимся ли мы СЕЙЧАС внутри блока кода
-        is_in_block_code = stack and stack[-1].startswith("```")
-
-        if is_in_block_code:
-            # Если мы внутри блока кода, нас интересует ТОЛЬКО закрывающий тег кода
-            if token.startswith("```"):
-                stack.pop()
-            else:
-                # Все остальные токены (** , __ и т.д.) игнорируем, пока не выйдем из кода
-                continue
-        else:
-            # Если мы снаружи, обрабатываем все теги
-            if stack and (
-                (token.startswith("```") and stack[-1].startswith("```"))
-                or (token == stack[-1])
-            ):
-                stack.pop()
-            else:
-                stack.append(token)
-
-    # 3. Формируем постфикс (LIFO)
-    closing_tags = []
-    for tag in reversed(stack):
-        if tag.startswith("```"):
-            closing_tags.append("```")  # Всегда закрываем просто тремя кавычками
-        else:
-            closing_tags.append(tag)
-
-    postfix = "".join(sanitaze_stack(closing_tags))
-
-    # 4. Сборка и отправка
-    final_text = f"{prefix}{text}{postfix}"
-    try:
-        await update.message.reply_text(
-            final_text, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True
-        )
-    except Exception as e:
-        logger.warning(f"Markdown parse error: {e}, sending without parse mode.")
-        await update.message.reply_text(final_text, parse_mode=None)
 
 
 def new_chat(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -150,7 +99,7 @@ async def start(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
         (
             f"**Hi {user.mention_html()}!**\n"
             "Start sending messages with me to generate a response.\n"
-            "Send /new to start a new chat session.\n" 
+            "Send /new to start a new chat session.\n"
             "Send /model to change the model used to generate responses.\n"
             "Send /help to see available commands."
         )

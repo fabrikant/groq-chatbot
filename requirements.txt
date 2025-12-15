@@ -4,5 +4,6 @@ python-telegram-bot==21.5
 httpx==0.28.1
 aiohttp
 googletrans
+telegramify-markdown[mermaid]
 
 git+https://github.com/rabilrbl/MongoPersistence.git@main

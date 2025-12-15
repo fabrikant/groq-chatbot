@@ -44,26 +44,26 @@ async def get_default_model() -> str:
         return default_model_name
 
 
-async def generate_response(message: str, context: ContextTypes.DEFAULT_TYPE):
-    """Generate a response to a message"""
+async def generate_response(message: str, context: ContextTypes.DEFAULT_TYPE) -> str:
     context.user_data["messages"] = context.user_data.get("messages", []) + [
         {
             "role": "user",
             "content": message,
         }
     ]
-    response_queue = ""
+
+    full_response_content = ""
     try:
-        async for resp in await chatbot.chat.completions.create(
+        completion = await chatbot.chat.completions.create(
             messages=context.user_data.get("messages"),
             model=context.user_data.get("model", await get_default_model()),
-            stream=True,
-        ):
-            if resp.choices[0].delta.content:
-                response_queue += resp.choices[0].delta.content
-            if len(response_queue) > 100:
-                yield response_queue
-                response_queue = ""
+            stream=False,
+        )
+
+        if completion.choices:
+            full_response_content = completion.choices[0].message.content
+
+        return full_response_content
+
     except groq.GroqError as e:
-        yield f"Error: {e}\nStart a new conversation, click /new"
-    yield response_queue
+        return f"Error: {e}\nStart a new conversation, click /new"
