@@ -37,13 +37,21 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     full_output_message = await generate_response(message, context)
 
-    # Create a custom interpreter chain
-    interpreter_chain = InterpreterChain(
-        [
-            TextInterpreter(),
-            MermaidInterpreter(session=None),
-        ]
-    )
+    if True:
+        interpreter_chain = InterpreterChain(
+            [
+                TextInterpreter(),
+                MermaidInterpreter(session=None),
+            ]
+        )
+    else:
+        interpreter_chain = InterpreterChain(
+            [
+                TextInterpreter(),
+                FileInterpreter(),
+                MermaidInterpreter(session=None),
+            ]
+        )
 
     MAX_LEN = 4000
     # Use the custom interpreter chain
@@ -66,7 +74,6 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                 caption=item.caption,
                 parse_mode="MarkdownV2",
             )
-
         elif item.content_type == ContentTypes.FILE:
             await context.bot.send_document(
                 chat_id=update.effective_chat.id,
