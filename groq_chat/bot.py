@@ -6,6 +6,7 @@ from telegram.ext import (
     MessageHandler,
     CallbackQueryHandler,
     ConversationHandler,
+    PicklePersistence,
 )
 from groq_chat.llm_response import send_llm_response
 from groq_chat.handlers import (
@@ -36,20 +37,6 @@ load_dotenv()
 
 "start"
 logger = logging.getLogger(__name__)
-
-persistence = None
-if os.getenv("MONGODB_URL"):
-    persistence = MongoPersistence(
-        mongo_url=os.getenv("MONGODB_URL"),
-        db_name="groq-chatbot",
-        name_col_user_data="user_data",
-        name_col_bot_data="bot_data",
-        name_col_chat_data="chat_data",
-        name_col_conversations_data="conversations_data",
-        create_col_if_not_exist=True,  # optional
-        ignore_general_data=["cache"],
-        update_interval=10,
-    )
 
 
 async def set_bot_commands(app):
@@ -84,9 +71,8 @@ def start_bot():
 
     app_builder = Application.builder().token(os.getenv("BOT_TOKEN"))
 
-    # Add persistence if available
-    if persistence:
-        app_builder.persistence(persistence)
+    persistence = PicklePersistence(filepath="./data/telegram-bot-data")
+    app_builder.persistence(persistence)
 
     # Build the app
     app = app_builder.build()

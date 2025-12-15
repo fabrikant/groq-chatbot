@@ -29,4 +29,6 @@ COPY --from=builder /app/groq_chat /app/groq_chat
 COPY --from=builder /app/translate /app/translate
 COPY --from=builder /app/*.py /app/
 
+RUN mkdir /app/data
+
 CMD ["python", "main.py"]
