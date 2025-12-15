@@ -20,6 +20,11 @@ from telegramify_markdown.customize import get_runtime_config
 
 logger = logging.getLogger(__name__)
 
+get_runtime_config().markdown_symbol.head_level_1 = "#"
+get_runtime_config().markdown_symbol.head_level_2 = "##"
+get_runtime_config().markdown_symbol.head_level_3 = "###"
+get_runtime_config().markdown_symbol.head_level_4 = "####"
+
 
 async def send_llm_response(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if "messages" not in context.user_data:
