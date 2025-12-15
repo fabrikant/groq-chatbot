@@ -7,7 +7,8 @@ from telegram.ext import ContextTypes, ConversationHandler
 from telegram.constants import ParseMode
 from groq_chat.groq_chat import get_groq_models, get_default_model
 from translate.translate import translate
-import telegramify_markdown
+from groq_chat.groq_chat import generate_response
+from groq_chat.llm_conversation import send_response
 
 
 logger = logging.getLogger(__name__)
@@ -33,10 +34,10 @@ async def start(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     message = await translate(
         (
             f"**Hi {user.mention_html()}!**\n"
-            "Start sending messages with me to generate a response.\n"
-            "Send /new to start a new chat session.\n"
-            "Send /model to change the model used to generate responses.\n"
-            "Send /help to see available commands."
+            "Start sending messages with me to generate a response\n"
+            "Send /new to start a new chat\n"
+            "Send /model to change the model used to generate responses\n"
+            "Send /help to see available commands"
         )
     )
     await update.message.reply_markdown(message)
@@ -50,11 +51,11 @@ async def help_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
             "/start - Start the bot\n"
             "/help - Get help. Shows this message\n\n"
             "Chat commands:\n"
-            "/new - Start a new chat session (model will forget previously generated messages)\n"
-            "/model - Change the model used to generate responses.\n"
-            "/system_prompt - Change the system prompt used for new chat sessions.\n"
-            "/info - Get info about the current chat session.\n\n"
-            "Send a message to the bot to generate a response."
+            "/new - Start a new chat (model will forget previously generated messages)\n"
+            "/model - Change the model used to generate responses\n"
+            "/system_prompt - Change the system prompt used for new chat sessions\n"
+            "/info - Get info about the current chat session\n\n"
+            "Send a message to the bot to generate a response"
         )
     )
     await update.message.reply_text(help_text)
@@ -65,7 +66,7 @@ async def new_command_handler(
 ) -> None:
     """Start a new chat session"""
     new_chat(context)
-    message = await translate("New chat session started.\n\nSwitch models with /model.")
+    message = await translate("New chat started.\n\nSwitch models with /model.")
     await update.message.reply_text(message)
 
 
@@ -97,14 +98,38 @@ async def change_model_callback_handler(
     model = query.data.replace("change_model_", "")
 
     context.user_data["model"] = model
-    message = await translate(
-        f"Model changed to `{model}`. \n\nSend /new to start a new chat session."
-    )
+    message = await translate(f"Model changed to `{model}`")
+    about = await get_model_info(context)
+
+    if about:
+        message += "\n\n" + about
+
+    new_chat(context)
 
     await query.edit_message_text(
         message,
         parse_mode=ParseMode.MARKDOWN,
     )
+
+
+async def get_model_info(context):
+    who_are_you = await translate("Tell me about yourself in two sentences")
+    about = await generate_response(who_are_you, context)
+
+    if about.lower().startswith("error"):
+        try:
+            error_json = json.loads(
+                about[about.find("{") : about.rfind("}") + 1].replace("'", '"')
+            )
+            about = error_json.get("error", about).get("message", about)
+            about = await translate(about) + "\n\n"
+            about += await translate(
+                "Send /model to change the model used to generate responses"
+            )
+        except:
+            pass
+
+    return about
 
 
 async def start_system_prompt(
@@ -145,29 +170,23 @@ async def info_command_handler(
 ) -> None:
     """Get info about the bot"""
     message = (
-        f"**__Conversation Info:__**\n"
+        f"**__Model Info:__**\n"
         f"**Model**: `{context.user_data.get("model", await get_default_model())}`"
     )
     message = await translate(message)
-    # if context.user_data.get("system_prompt") is not None:
-    #     message += f"\n**System Prompt**: \n```\n{context.user_data.get("system_prompt")}\n```"
+    about = await get_model_info(context)
+    if about:
+        message += "\n\n" + about
     await update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN)
 
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Log the error and send a telegram message to notify the developer."""
-    # Log the error before we do anything else, so we can see it even if something breaks.
     logger.error("Exception while handling an update:", exc_info=context.error)
-
-    # traceback.format_exception returns the usual python message about an exception, but as a
-    # list of strings rather than a single string, so we have to join them together.
     tb_list = traceback.format_exception(
         None, context.error, context.error.__traceback__
     )
     tb_string = "".join(tb_list)
-
-    # Build the message with some markup and additional information about what happened.
-    # You might need to add some logic to deal with messages longer than the 4096 character limit.
     update_str = update.to_dict() if isinstance(update, Update) else str(update)
     message = (
         "An exception was raised while handling an update\n"
@@ -176,5 +195,4 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
         f"<pre>{html.escape(tb_string)}</pre>"
     )
 
-    # Finally, send the message
     await update.message.reply_text(text=message, parse_mode=ParseMode.HTML)

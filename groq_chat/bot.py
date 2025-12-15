@@ -8,7 +8,7 @@ from telegram.ext import (
     ConversationHandler,
     PicklePersistence,
 )
-from groq_chat.llm_response import send_llm_response
+from groq_chat.llm_conversation import llm_request
 from groq_chat.handlers import (
     start,
     help_command,
@@ -102,7 +102,7 @@ def start_bot():
         )
     )
 
-    app.add_handler(MessageHandler(MessageFilter, send_llm_response))
+    app.add_handler(MessageHandler(MessageFilter, llm_request))
     app.add_handler(
         CallbackQueryHandler(change_model_callback_handler, pattern="^change_model_")
     )

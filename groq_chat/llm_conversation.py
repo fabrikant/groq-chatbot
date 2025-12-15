@@ -26,7 +26,7 @@ get_runtime_config().markdown_symbol.head_level_3 = "###"
 get_runtime_config().markdown_symbol.head_level_4 = "####"
 
 
-async def send_llm_response(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def llm_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if "messages" not in context.user_data:
         context.user_data["messages"] = []
 
@@ -37,6 +37,12 @@ async def send_llm_response(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     await update.message.chat.send_action(ChatAction.TYPING)
 
     full_output_message = await generate_response(message, context)
+    await send_response(full_output_message, update, context)
+
+
+async def send_response(
+    full_output_message: str, update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
 
     if True:
         interpreter_chain = InterpreterChain(
