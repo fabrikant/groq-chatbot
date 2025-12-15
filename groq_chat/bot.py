@@ -28,10 +28,10 @@ from groq import AsyncGroq
 import httpx
 from groq_chat.filters import AuthFilter, MessageFilter
 from dotenv import load_dotenv
-from mongopersistence import MongoPersistence
 import logging
 from telegram import Update, BotCommand
 from translate.translate import translate
+import groq_chat.command_descriptions as com_descr
 
 load_dotenv()
 
@@ -42,13 +42,12 @@ logger = logging.getLogger(__name__)
 async def set_bot_commands(app):
 
     commands = [
-        BotCommand("start", await translate("start")),
-        BotCommand("help", await translate("show_help")),
-        BotCommand("info", await translate("bot_info")),
-        BotCommand("new", await translate("new_conversation")),
-        BotCommand("model", await translate("choose_model")),
-        # BotCommand("system_prompt", await translate("system_prompt")),
-        # BotCommand("cancel", await translate("cancel_prompt")),
+        BotCommand("start", await translate(com_descr.start)),
+        BotCommand("model", await translate(com_descr.model)),
+        BotCommand("new", await translate(com_descr.new)),
+        BotCommand("info", await translate(com_descr.info)),
+        BotCommand("help", await translate(com_descr.help)),
+        BotCommand("system_prompt", await translate(com_descr.system_prompt)),
     ]
     # `app.bot` уже инициализирован к моменту вызова `run_polling()`
     await app.bot.set_my_commands(commands)

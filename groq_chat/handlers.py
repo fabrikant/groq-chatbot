@@ -9,7 +9,7 @@ from groq_chat.groq_chat import get_groq_models, get_default_model
 from translate.translate import translate
 from groq_chat.groq_chat import generate_response
 from groq_chat.llm_conversation import send_response
-
+import groq_chat.command_descriptions as com_descr
 
 logger = logging.getLogger(__name__)
 SYSTEM_PROMPT_SP = 1
@@ -33,11 +33,11 @@ async def start(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
     message = await translate(
         (
-            f"**Hi {user.mention_html()}!**\n"
+            f"**Hi {user.mention_markdown()}!**\n"
             "Start sending messages with me to generate a response\n"
-            "Send /new to start a new chat\n"
-            "Send /model to change the model used to generate responses\n"
-            "Send /help to see available commands"
+            f"{com_descr.new}\n"
+            f"{com_descr.model}\n"
+            f"{com_descr.help}"
         )
     )
     await update.message.reply_markdown(message)
@@ -47,14 +47,12 @@ async def help_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
     help_text = await translate(
         (
-            "Basic commands:\n"
-            "/start - Start the bot\n"
-            "/help - Get help. Shows this message\n\n"
-            "Chat commands:\n"
-            "/new - Start a new chat (model will forget previously generated messages)\n"
-            "/model - Change the model used to generate responses\n"
-            "/system_prompt - Change the system prompt used for new chat sessions\n"
-            "/info - Get info about the current chat session\n\n"
+            "Available commands:\n"
+            f"{com_descr.new}\n"
+            f"{com_descr.help}\n\n"
+            f"{com_descr.model}\n"
+            f"{com_descr.info}\n"
+            f"{com_descr.system_prompt}\n\n"
             "Send a message to the bot to generate a response"
         )
     )
@@ -66,7 +64,7 @@ async def new_command_handler(
 ) -> None:
     """Start a new chat session"""
     new_chat(context)
-    message = await translate("New chat started.\n\nSwitch models with /model.")
+    message = await translate(f"New chat started.\n{com_descr.model}")
     await update.message.reply_text(message)
 
 
