@@ -7,10 +7,10 @@ from telegram.ext import (
     CallbackQueryHandler,
     ConversationHandler,
 )
+from groq_chat.llm_response import send_llm_response
 from groq_chat.handlers import (
     start,
     help_command,
-    message_handler,
     new_command_handler,
     model_command_handler,
     change_model_callback_handler,
@@ -96,7 +96,7 @@ def start_bot():
     app.add_handler(CommandHandler("info", info_command_handler, filters=AuthFilter))
     app.add_handler(CommandHandler("new", new_command_handler, filters=AuthFilter))
     app.add_handler(CommandHandler("help", help_command, filters=AuthFilter))
-    
+
     app.add_handler(
         ConversationHandler(
             entry_points=[
@@ -116,7 +116,7 @@ def start_bot():
         )
     )
 
-    app.add_handler(MessageHandler(MessageFilter, message_handler))
+    app.add_handler(MessageHandler(MessageFilter, send_llm_response))
     app.add_handler(
         CallbackQueryHandler(change_model_callback_handler, pattern="^change_model_")
     )
