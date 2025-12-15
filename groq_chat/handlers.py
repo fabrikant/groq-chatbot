@@ -186,11 +186,8 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
     )
     tb_string = "".join(tb_list)
     update_str = update.to_dict() if isinstance(update, Update) else str(update)
-    message = (
-        "An exception was raised while handling an update\n"
-        f"<pre>update = {html.escape(json.dumps(update_str, indent=2, ensure_ascii=False))}"
-        "</pre>\n\n"
-        f"<pre>{html.escape(tb_string)}</pre>"
-    )
+    message = f"```update_str\n{update_str}```\n\n```e./rror\n{tb_string}\n```\n"
 
-    await update.message.reply_text(text=message, parse_mode=ParseMode.HTML)
+    await send_response(message, update, context)
+
+    # await update.message.reply_text(text=message, parse_mode=ParseMode.HTML)

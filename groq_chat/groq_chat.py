@@ -24,6 +24,8 @@ async def get_groq_models() -> dict:
     if chatbot:
         models = await chatbot.models.list()
         available_models = [model.id for model in models.data]
+        if available_models:
+            available_models.sort()
     return available_models
 
 
