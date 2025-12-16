@@ -105,6 +105,7 @@ async def change_model_callback_handler(
 
     await query.edit_message_text(
         message,
+        reply_markup=query.message.reply_markup,
         parse_mode=ParseMode.MARKDOWN,
     )
 
