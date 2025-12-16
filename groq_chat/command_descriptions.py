@@ -6,3 +6,4 @@ model = (
 )
 system_prompt = "/system_prompt - change the system prompt used for new chat sessions"
 info = "/info - get info about the current chat session"
+panel = "/panel - Control panel"

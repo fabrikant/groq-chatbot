@@ -1,4 +1,3 @@
-import html
 import json
 import logging
 import traceback
@@ -68,7 +67,7 @@ async def new_command_handler(
     await update.message.reply_text(message)
 
 
-def create_model_key(model_name: str) -> InlineKeyboardMarkup:
+def create_model_key(model_name: str) -> InlineKeyboardButton:
     return InlineKeyboardButton(model_name, callback_data="change_model_" + model_name)
 
 
