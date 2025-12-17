@@ -8,6 +8,12 @@ from translate.translate import translate
 import groq_chat.command_descriptions as com_descr
 from groq_chat.context import new_chat
 from telegram.constants import ChatAction
+import telegramify_markdown
+from telegramify_markdown.interpreters import (
+    TextInterpreter,
+    InterpreterChain,
+)
+
 
 logger = logging.getLogger(__name__)
 
@@ -58,18 +64,34 @@ async def change_model_callback_handler(
 
     context.user_data["model"] = model
     message = await translate(f"Model changed to `{model}`")
+    message = f"# {message}"
+
     about = await get_model_info(update, context)
 
     if about:
         message += "\n\n" + about
-
     new_chat(context)
 
-    await query.edit_message_text(
-        message,
-        reply_markup=query.message.reply_markup,
-        parse_mode=ParseMode.MARKDOWN,
+    interpreter_chain = InterpreterChain(
+        [
+            TextInterpreter(),
+        ]
     )
+
+    boxs = await telegramify_markdown.telegramify(
+        content=message,
+        interpreters_use=interpreter_chain,
+        latex_escape=True,
+        normalize_whitespace=True,
+        max_word_count=4000,
+    )
+
+    for item in boxs:
+        await query.edit_message_text(
+            item.content,
+            reply_markup=query.message.reply_markup,
+            parse_mode=ParseMode.MARKDOWN_V2,
+        )
 
 
 async def get_model_info(update, context):

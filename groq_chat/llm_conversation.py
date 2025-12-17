@@ -10,9 +10,10 @@ from telegramify_markdown.interpreters import (
     MermaidInterpreter,
     InterpreterChain,
 )
+from telegram.constants import ParseMode
 from telegramify_markdown.type import ContentTypes
-import io  # Необходимо добавить в ваш файл
-from telegram import InputFile  # Необходимо добавить в ваш файл
+import io
+from telegram import InputFile
 from telegramify_markdown.customize import get_runtime_config
 import db.async_database as db
 
@@ -71,20 +72,22 @@ async def send_response(
     for item in boxs:
 
         if item.content_type == ContentTypes.TEXT:
-            await update.message.reply_text(item.content, parse_mode="MarkdownV2")
+            await update.message.reply_text(
+                item.content, parse_mode=ParseMode.MARKDOWN_V2
+            )
         elif item.content_type == ContentTypes.PHOTO:
             await context.bot.send_photo(
                 chat_id=update.effective_chat.id,
                 photo=InputFile(io.BytesIO(item.file_data), filename=item.file_name),
                 caption=item.caption,
-                parse_mode="MarkdownV2",
+                parse_mode=ParseMode.MARKDOWN_V2,
             )
         elif item.content_type == ContentTypes.FILE:
             await context.bot.send_document(
                 chat_id=update.effective_chat.id,
                 document=InputFile(io.BytesIO(item.file_data), filename=item.file_name),
                 caption=item.caption,
-                parse_mode="MarkdownV2",
+                parse_mode=ParseMode.MARKDOWN_V2,
             )
 
     context.user_data["messages"].append(

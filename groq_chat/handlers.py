@@ -123,5 +123,5 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 
     for item in boxs:
         await context.bot.send_message(
-            chat_id=chat_id, text=item.content, parse_mode="MarkdownV2"
+            chat_id=chat_id, text=item.content, parse_mode=ParseMode.MARKDOWN_V2
         )
