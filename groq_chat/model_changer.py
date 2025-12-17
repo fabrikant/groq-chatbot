@@ -82,3 +82,16 @@ async def get_model_info(context):
             pass
 
     return about
+
+
+async def show_model_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Get info about the bot"""
+    message = (
+        f"**__Model Info:__**\n"
+        f"**Model**: `{context.user_data.get("model", await get_default_model())}`"
+    )
+    message = await translate(message)
+    about = await get_model_info(context)
+    if about:
+        message += "\n\n" + about
+    await update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN)

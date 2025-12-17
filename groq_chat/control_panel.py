@@ -5,7 +5,7 @@ from translate.translate import translate
 import db.async_database as db
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm.state import AttributeState
-from groq_chat.model_changer import model_command_handler
+from groq_chat.model_changer import model_command_handler, show_model_info
 
 logger = logging.getLogger(__name__)
 
@@ -14,15 +14,18 @@ async def control_panel_builder(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
     button_list = [
-        [create_key("select_model", await translate("Select a model"))],
         [
-            create_key(
-                "code_in_file", await translate("Download program code into a file")
-            )
+            create_key("select_model", await translate("Select a model")),
+            create_key("model_info", await translate("Model Information")),
         ],
         [
+            create_key("reset_context", await translate("Reset model context")),
+            create_key("set_prompt", await translate("Set model prompt")),
+        ],
+        [create_key("code_in_file", await translate("Export text blocks to files"))],
+        [
             create_key(
-                "code_in_message", await translate("Output program code to a message")
+                "code_in_message", await translate("Output text blocks to messages")
             )
         ],
     ]
@@ -45,6 +48,10 @@ async def control_panel_executor(
     need_execute, detail_command = command_matches_pattern(command, "select_model")
     if need_execute:
         await model_command_handler(update, context)
+
+    need_execute, detail_command = command_matches_pattern(command, "model_info")
+    if need_execute:
+        show_model_info(update, context)
 
 
 def create_key(id: str, descriptipn: str) -> InlineKeyboardButton:

@@ -88,21 +88,6 @@ async def get_system_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     return ConversationHandler.END
 
 
-async def info_command_handler(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> None:
-    """Get info about the bot"""
-    message = (
-        f"**__Model Info:__**\n"
-        f"**Model**: `{context.user_data.get("model", await get_default_model())}`"
-    )
-    message = await translate(message)
-    about = await get_model_info(context)
-    if about:
-        message += "\n\n" + about
-    await update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN)
-
-
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Log the error and send a telegram message to notify the developer."""
     logger.error("Exception while handling an update:", exc_info=context.error)
