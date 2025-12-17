@@ -60,6 +60,7 @@ async def initialize_db() -> AsyncSession:
     )
 
     session = AsyncSessionLocal()
+    db_session = session
 
     admin = True
     for str_tg_id in _AUTHORIZED_USERS:
@@ -83,8 +84,6 @@ async def initialize_db() -> AsyncSession:
                     f"An unexpected error occurred during user initialization: {e}"
                 )
                 # raise
-
-    db_session = session
 
 
 async def get_or_create(model, update: bool, **kwargs):

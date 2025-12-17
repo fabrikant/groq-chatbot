@@ -118,16 +118,15 @@ async def show_model_info(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     query = update.callback_query
     chat_id = query.message.chat.id
     await context.bot.send_chat_action(chat_id, ChatAction.TYPING)
-
-    """Get info about the bot"""
     message = (
-        f"**__Model Info:__**\n"
-        f"**Model**: `{context.user_data.get("model", await get_default_model())}`"
+        f"**__{(await translate("Model info"))}:__**\n"
+        f"**{(await translate("Model"))}**: `{context.user_data.get("model", await get_default_model())}`"
     )
-    message = await translate(message)
+
     about = await get_model_info(update, context)
     if about:
         message += "\n\n" + about
-    # await update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN)
 
-    await context.bot.send_message(chat_id=chat_id, text=message, parse_mode="Markdown")
+    await context.bot.send_message(
+        chat_id=chat_id, text=message, parse_mode=ParseMode.MARKDOWN
+    )
