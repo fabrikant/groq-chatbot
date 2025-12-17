@@ -6,6 +6,7 @@ import db.async_database as db
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm.state import AttributeState
 from groq_chat.model_changer import model_command_handler, show_model_info
+from groq_chat.handlers import new_command_handler
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,10 @@ async def control_panel_executor(
     need_execute, detail_command = command_matches_pattern(command, "model_info")
     if need_execute:
         await show_model_info(update, context)
+
+    need_execute, detail_command = command_matches_pattern(command, "reset_context")
+    if need_execute:
+        await new_command_handler(update, context)
 
 
 def create_key(id: str, descriptipn: str) -> InlineKeyboardButton:

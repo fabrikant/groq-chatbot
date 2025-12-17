@@ -10,7 +10,11 @@ from telegram.ext import (
 )
 from groq_chat.llm_conversation import llm_request
 from groq_chat.control_panel import control_panel_builder, control_panel_executor
-from groq_chat.model_changer import change_model_callback_handler
+from groq_chat.model_changer import (
+    change_model_callback_handler,
+    model_command_handler,
+    show_model_info,
+)
 from groq_chat.handlers import (
     start,
     help_command,
@@ -80,8 +84,8 @@ def start_bot():
 
     app.add_handler(CommandHandler("start", start, filters=AuthFilter))
     app.add_handler(CommandHandler("panel", control_panel_builder, filters=AuthFilter))
-    # app.add_handler(CommandHandler("model", model_command_handler, filters=AuthFilter))
-    # app.add_handler(CommandHandler("info", info_command_handler, filters=AuthFilter))
+    app.add_handler(CommandHandler("model", model_command_handler, filters=AuthFilter))
+    app.add_handler(CommandHandler("info", show_model_info, filters=AuthFilter))
     app.add_handler(CommandHandler("new", new_command_handler, filters=AuthFilter))
     app.add_handler(CommandHandler("help", help_command, filters=AuthFilter))
 

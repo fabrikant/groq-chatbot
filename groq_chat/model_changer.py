@@ -26,8 +26,12 @@ async def model_command_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
 
-    query = update.callback_query
-    chat_id = query.message.chat.id
+    if update.callback_query:
+        query = update.callback_query
+        chat_id = query.message.chat.id
+    else:
+        chat_id = context._chat_id
+
     await context.bot.send_chat_action(chat_id, ChatAction.TYPING)
 
     models = await get_groq_models()
@@ -53,8 +57,12 @@ async def model_command_handler(
 async def change_model_callback_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
-    query = update.callback_query
-    chat_id = query.message.chat.id
+    if update.callback_query:
+        query = update.callback_query
+        chat_id = query.message.chat.id
+    else:
+        chat_id = context._chat_id
+
     await context.bot.send_chat_action(chat_id, ChatAction.TYPING)
 
     model = query.data.replace("change_model_", "")
@@ -115,8 +123,12 @@ async def get_model_info(update, context):
 
 
 async def show_model_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    chat_id = query.message.chat.id
+    if update.callback_query:
+        query = update.callback_query
+        chat_id = query.message.chat.id
+    else:
+        chat_id = context._chat_id
+
     await context.bot.send_chat_action(chat_id, ChatAction.TYPING)
     message = (
         f"**__{(await translate("Model info"))}:__**\n"

@@ -54,10 +54,17 @@ async def help_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
 async def new_command_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
-    """Start a new chat session"""
     new_chat(context)
     message = await translate(f"New chat started.\n{com_descr.model}")
-    await update.message.reply_text(message)
+    if update.callback_query:
+        query = update.callback_query
+        chat_id = query.message.chat.id
+    else:
+        chat_id = context._chat_id
+
+    await context.bot.send_message(
+        chat_id=chat_id, text=message, parse_mode=ParseMode.MARKDOWN
+    )
 
 
 async def start_system_prompt(
@@ -118,8 +125,11 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
         normalize_whitespace=True,
         max_word_count=MAX_LEN,  # The maximum number of words in a single message.
     )
-    query = update.callback_query
-    chat_id = query.message.chat.id
+    if update.callback_query:
+        query = update.callback_query
+        chat_id = query.message.chat.id
+    else:
+        chat_id = context._chat_id
 
     for item in boxs:
         await context.bot.send_message(
