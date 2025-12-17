@@ -86,7 +86,6 @@ async def cancelled_system_prompt(
 
 
 async def get_system_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Get the system prompt"""
     system_prompt = update.message.text
     if system_prompt.lower().strip() == "clear":
         context.user_data.pop("system_prompt", None)
@@ -98,6 +97,23 @@ async def get_system_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         await update.message.reply_text(message)
     new_chat(context)
     return ConversationHandler.END
+
+
+async def show_system_prompt(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    if update.callback_query:
+        query = update.callback_query
+        chat_id = query.message.chat.id
+    else:
+        chat_id = context._chat_id
+
+    if "system_prompt" in context.user_data and context.user_data["system_prompt"]:
+        message = context.user_data["system_prompt"]
+    else:
+        message = await translate("System prompt not set")
+
+    await context.bot.send_message(chat_id=chat_id, text=message)
 
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:

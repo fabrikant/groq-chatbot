@@ -6,7 +6,7 @@ import db.async_database as db
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm.state import AttributeState
 from groq_chat.model_changer import model_command_handler, show_model_info
-from groq_chat.handlers import new_command_handler
+from groq_chat.handlers import new_command_handler, show_system_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +20,15 @@ async def control_panel_builder(
             create_key("model_info", await translate("Model Information")),
         ],
         [
-            create_key("reset_context", await translate("Reset model context")),
-            create_key("set_prompt", await translate("Set model prompt")),
+            create_key(
+                "reset_context",
+                await translate("Reset model context (remove all messeges)"),
+            ),
+        ],
+        [create_key("show_prompt", "Show sytem prompt")],
+        [
+            create_key("set_prompt", "Set system prompt"),
+            create_key("clear_prompt", "Clear model prompt"),
         ],
         [create_key("code_in_file", await translate("Export text blocks to files"))],
         [
@@ -57,6 +64,10 @@ async def control_panel_executor(
     need_execute, detail_command = command_matches_pattern(command, "reset_context")
     if need_execute:
         await new_command_handler(update, context)
+
+    need_execute, detail_command = command_matches_pattern(command, "show_prompt")
+    if need_execute:
+        await show_system_prompt(update, context)
 
 
 def create_key(id: str, descriptipn: str) -> InlineKeyboardButton:
