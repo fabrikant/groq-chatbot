@@ -54,10 +54,17 @@ async def generate_response(message: str, context: ContextTypes.DEFAULT_TYPE) ->
         }
     ]
 
+    full_request_content = []
+    prompt_str = context.user_data.get("system_prompt", None)
+    if prompt_str:
+        full_request_content += [{"role": "system", "content": prompt_str}]
+
+    full_request_content += context.user_data["messages"]
+
     full_response_content = ""
     try:
         completion = await chatbot.chat.completions.create(
-            messages=context.user_data.get("messages"),
+            messages=full_request_content,
             model=context.user_data.get("model", await get_default_model()),
             stream=False,
         )

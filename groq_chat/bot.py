@@ -89,24 +89,24 @@ def start_bot():
     app.add_handler(CommandHandler("new", new_command_handler, filters=AuthFilter))
     app.add_handler(CommandHandler("help", help_command, filters=AuthFilter))
 
-    app.add_handler(
-        ConversationHandler(
-            entry_points=[
-                CommandHandler("system_prompt", start_system_prompt, filters=AuthFilter)
-            ],
-            states={
-                SYSTEM_PROMPT_SP: [MessageHandler(MessageFilter, get_system_prompt)],
-                CANCEL_SP: [
-                    CommandHandler(
-                        "cancel", cancelled_system_prompt, filters=AuthFilter
-                    )
-                ],
-            },
-            fallbacks=[
-                CommandHandler("cancel", cancelled_system_prompt, filters=AuthFilter)
-            ],
-        )
-    )
+    # app.add_handler(
+    #     ConversationHandler(
+    #         entry_points=[
+    #             CommandHandler("system_prompt", start_system_prompt, filters=AuthFilter)
+    #         ],
+    #         states={
+    #             SYSTEM_PROMPT_SP: [MessageHandler(MessageFilter, get_system_prompt)],
+    #             CANCEL_SP: [
+    #                 CommandHandler(
+    #                     "cancel", cancelled_system_prompt, filters=AuthFilter
+    #                 )
+    #             ],
+    #         },
+    #         fallbacks=[
+    #             CommandHandler("cancel", cancelled_system_prompt, filters=AuthFilter)
+    #         ],
+    #     )
+    # )
 
     app.add_handler(MessageHandler(MessageFilter, llm_request))
     app.add_handler(
