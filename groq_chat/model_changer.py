@@ -7,6 +7,7 @@ from groq_chat.groq_chat import get_groq_models, generate_response, get_default_
 from translate.translate import translate
 import groq_chat.command_descriptions as com_descr
 from groq_chat.context import new_chat
+from telegram.constants import ChatAction
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,10 @@ async def model_command_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
 
+    query = update.callback_query
+    chat_id = query.message.chat.id
+    await context.bot.send_chat_action(chat_id, ChatAction.TYPING)
+
     models = await get_groq_models()
     button_list = [
         [create_model_key(models[i]), create_model_key(models[i + 1])]
@@ -29,8 +34,6 @@ async def model_command_handler(
     reply_markup = InlineKeyboardMarkup(button_list)
     message = await translate("select_model")
 
-    query = update.callback_query
-    chat_id = query.message.chat.id
     try:
         await query.message.delete()
     except Exception as exc:  # сообщение могло уже быть удалено
@@ -44,13 +47,18 @@ async def model_command_handler(
 async def change_model_callback_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
-    """Change the model used to generate responses"""
     query = update.callback_query
+    chat_id = query.message.chat.id
+    await context.bot.send_chat_action(chat_id, ChatAction.TYPING)
+
     model = query.data.replace("change_model_", "")
+
+    if update.message:
+        await update.message.chat.send_action(ChatAction.TYPING)
 
     context.user_data["model"] = model
     message = await translate(f"Model changed to `{model}`")
-    about = await get_model_info(context)
+    about = await get_model_info(update, context)
 
     if about:
         message += "\n\n" + about
@@ -64,7 +72,7 @@ async def change_model_callback_handler(
     )
 
 
-async def get_model_info(context):
+async def get_model_info(update, context):
     who_are_you = await translate("Tell me about yourself in two sentences")
     about = await generate_response(who_are_you, context)
 
@@ -85,13 +93,19 @@ async def get_model_info(context):
 
 
 async def show_model_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    chat_id = query.message.chat.id
+    await context.bot.send_chat_action(chat_id, ChatAction.TYPING)
+
     """Get info about the bot"""
     message = (
         f"**__Model Info:__**\n"
         f"**Model**: `{context.user_data.get("model", await get_default_model())}`"
     )
     message = await translate(message)
-    about = await get_model_info(context)
+    about = await get_model_info(update, context)
     if about:
         message += "\n\n" + about
-    await update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN)
+    # await update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN)
+
+    await context.bot.send_message(chat_id=chat_id, text=message, parse_mode="Markdown")

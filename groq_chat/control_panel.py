@@ -51,7 +51,7 @@ async def control_panel_executor(
 
     need_execute, detail_command = command_matches_pattern(command, "model_info")
     if need_execute:
-        show_model_info(update, context)
+        await show_model_info(update, context)
 
 
 def create_key(id: str, descriptipn: str) -> InlineKeyboardButton:

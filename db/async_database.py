@@ -44,7 +44,12 @@ class Users(Base):
 async def initialize_db() -> AsyncSession:
     global db_session
 
-    connection_string = "sqlite+aiosqlite:///./data/tg-bot.db"
+    dirname = "./data/"
+
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+
+    connection_string = f"sqlite+aiosqlite:///{dirname}tg-bot.db"
     engine = create_async_engine(connection_string, echo=True)
 
     async with engine.begin() as conn:

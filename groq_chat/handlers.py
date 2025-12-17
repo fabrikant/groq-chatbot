@@ -5,10 +5,15 @@ from telegram.ext import ContextTypes, ConversationHandler
 from telegram.constants import ParseMode
 from groq_chat.groq_chat import get_default_model
 from translate.translate import translate
-from groq_chat.model_changer import get_model_info
 from groq_chat.llm_conversation import send_response
 import groq_chat.command_descriptions as com_descr
 from groq_chat.context import new_chat
+
+import telegramify_markdown
+from telegramify_markdown.interpreters import (
+    TextInterpreter,
+    InterpreterChain,
+)
 
 logger = logging.getLogger(__name__)
 SYSTEM_PROMPT_SP = 1
@@ -96,6 +101,27 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
     )
     tb_string = "".join(tb_list)
     update_str = update.to_dict() if isinstance(update, Update) else str(update)
-    message = f"```update_str\n{update_str}```\n\n```e./rror\n{tb_string}\n```\n"
+    message = f"```update_str\n{update_str}```\n\n\n```error_str\n\n{tb_string}\n```\n"
 
-    await send_response(message, update, context)
+    interpreter_chain = InterpreterChain(
+        [
+            TextInterpreter(),
+        ]
+    )
+
+    MAX_LEN = 4000
+    # Use the custom interpreter chain
+    boxs = await telegramify_markdown.telegramify(
+        content=message,
+        interpreters_use=interpreter_chain,
+        latex_escape=True,
+        normalize_whitespace=True,
+        max_word_count=MAX_LEN,  # The maximum number of words in a single message.
+    )
+    query = update.callback_query
+    chat_id = query.message.chat.id
+
+    for item in boxs:
+        await context.bot.send_message(
+            chat_id=chat_id, text=item.content, parse_mode="MarkdownV2"
+        )
