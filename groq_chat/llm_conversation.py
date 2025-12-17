@@ -11,12 +11,10 @@ from telegramify_markdown.interpreters import (
     InterpreterChain,
 )
 from telegramify_markdown.type import ContentTypes
-
 import io  # Необходимо добавить в ваш файл
 from telegram import InputFile  # Необходимо добавить в ваш файл
-
 from telegramify_markdown.customize import get_runtime_config
-
+import db.async_database as db
 
 logger = logging.getLogger(__name__)
 
@@ -44,19 +42,18 @@ async def send_response(
     full_output_message: str, update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
 
-    if True:
-        interpreter_chain = InterpreterChain(
-            [
-                TextInterpreter(),
-                MermaidInterpreter(session=None),
-            ]
-        )
-    else:
-        # Это нужно чтобы получать код в отдельных файлах
+    if await db.get_user_setting(context._user_id, "file_interpreter", False):
         interpreter_chain = InterpreterChain(
             [
                 TextInterpreter(),
                 FileInterpreter(),
+                MermaidInterpreter(session=None),
+            ]
+        )
+    else:
+        interpreter_chain = InterpreterChain(
+            [
+                TextInterpreter(),
                 MermaidInterpreter(session=None),
             ]
         )

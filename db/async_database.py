@@ -186,6 +186,14 @@ async def set_user_setting(user_id, setting_id, setting_value):
     return instance
 
 
+async def get_user_setting(user_id, setting_id, default_value=None):
+    result = default_value
+    instance = await get_record_by_id(Users, id=user_id)
+    if instance:
+        result = getattr(instance, setting_id)
+    return result
+
+
 # async def new_app_key(session: AsyncSession, model, update: bool, **kwargs):
 #     instance = None
 #     try:

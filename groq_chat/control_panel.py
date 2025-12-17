@@ -1,20 +1,50 @@
-import html
-import json
 import logging
-import traceback
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ContextTypes, ConversationHandler
-from telegram.constants import ParseMode
-from groq_chat.groq_chat import get_groq_models, get_default_model
+from telegram.ext import ContextTypes
 from translate.translate import translate
-from groq_chat.groq_chat import generate_response
-from groq_chat.llm_conversation import send_response
-import groq_chat.command_descriptions as com_descr
 import db.async_database as db
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm.state import AttributeState
+from groq_chat.model_changer import model_command_handler
 
 logger = logging.getLogger(__name__)
+
+
+async def control_panel_builder(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    button_list = [
+        [create_key("select_model", await translate("Select a model"))],
+        [
+            create_key(
+                "code_in_file", await translate("Download program code into a file")
+            )
+        ],
+        [
+            create_key(
+                "code_in_message", await translate("Output program code to a message")
+            )
+        ],
+    ]
+
+    reply_markup = InlineKeyboardMarkup(button_list)
+    message = await panel_banner(update, context)
+    await update.message.reply_text(message, reply_markup=reply_markup)
+
+
+async def control_panel_executor(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    query = update.callback_query
+    command = query.data.replace("ctrl_panel_", "")
+
+    need_execute, detail_command = command_matches_pattern(command, "code_in_")
+    if need_execute:
+        await change_file_interpreter(update, context, detail_command)
+
+    need_execute, detail_command = command_matches_pattern(command, "select_model")
+    if need_execute:
+        await model_command_handler(update, context)
 
 
 def create_key(id: str, descriptipn: str) -> InlineKeyboardButton:
@@ -39,46 +69,24 @@ async def panel_banner(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return message
 
 
-async def control_panel_builder(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> None:
-    pass
-    button_list = [
-        [
-            create_key("code_in_file", await translate("Code in file")),
-            create_key("code_in_message", await translate("Code in message")),
-        ]
-    ]
-    reply_markup = InlineKeyboardMarkup(button_list)
-    message = await panel_banner(update, context)
-    await update.message.reply_text(message, reply_markup=reply_markup)
+def command_matches_pattern(command, pattern):
+    if command.startswith(pattern):
+        return True, command.replace(pattern, "")
+    else:
+        return False, None
 
 
-async def control_panel_executor(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> None:
-    pass
+async def change_file_interpreter(update, context, command):
+    setting_id = "file_interpreter"
+    db_record = await db.set_user_setting(
+        context._user_id, setting_id, command.startswith("file")
+    )
+    if db_record:
+        getattr(db_record, setting_id, None)
+        message = message = await panel_banner(update, context)
+    else:
+        message = await translate("An error occurred while setting a new value")
+
+    logger.info(message)
     query = update.callback_query
-    command = query.data.replace("ctrl_panel_", "")
-
-    if command.startswith("code_in_"):
-        command = command.replace("code_in_", "")
-        setting_id = "file_interpreter"
-        db_record = await db.set_user_setting(
-            context._user_id, setting_id, command.startswith("file")
-        )
-        if db_record:
-            getattr(db_record, setting_id, None)
-            message = message = await panel_banner(update, context)
-        else:
-            message = await translate("An error occurred while setting a new value")
-
-        logger.info(message)
-        query = update.callback_query
-
-        try:
-            await query.edit_message_text(
-                text=message, reply_markup=query.message.reply_markup
-            )
-        except Exception as e:
-            logger.error(e)
+    await query.edit_message_text(text=message, reply_markup=query.message.reply_markup)

@@ -1,30 +1,18 @@
-import json
 import logging
 import traceback
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update
 from telegram.ext import ContextTypes, ConversationHandler
 from telegram.constants import ParseMode
-from groq_chat.groq_chat import get_groq_models, get_default_model
+from groq_chat.groq_chat import get_default_model
 from translate.translate import translate
-from groq_chat.groq_chat import generate_response
+from groq_chat.model_changer import get_model_info
 from groq_chat.llm_conversation import send_response
 import groq_chat.command_descriptions as com_descr
+from groq_chat.context import new_chat
 
 logger = logging.getLogger(__name__)
 SYSTEM_PROMPT_SP = 1
 CANCEL_SP = 2
-
-
-def new_chat(context: ContextTypes.DEFAULT_TYPE) -> None:
-    if context.user_data.get("system_prompt") is not None:
-        context.user_data["messages"] = [
-            {
-                "role": "system",
-                "content": context.user_data.get("system_prompt"),
-            },
-        ]
-    else:
-        context.user_data["messages"] = []
 
 
 async def start(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
@@ -65,69 +53,6 @@ async def new_command_handler(
     new_chat(context)
     message = await translate(f"New chat started.\n{com_descr.model}")
     await update.message.reply_text(message)
-
-
-def create_model_key(model_name: str) -> InlineKeyboardButton:
-    return InlineKeyboardButton(model_name, callback_data="change_model_" + model_name)
-
-
-async def model_command_handler(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> None:
-
-    models = await get_groq_models()
-    button_list = [
-        [create_model_key(models[i]), create_model_key(models[i + 1])]
-        for i in range(0, len(models) - len(models) % 2, 2)
-    ]
-    if len(models) % 2 == 1:
-        button_list.append([create_model_key(models[-1])])
-    reply_markup = InlineKeyboardMarkup(button_list)
-    message = await translate("select_model")
-    await update.message.reply_text(message, reply_markup=reply_markup)
-
-
-async def change_model_callback_handler(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> None:
-    """Change the model used to generate responses"""
-    query = update.callback_query
-    model = query.data.replace("change_model_", "")
-
-    context.user_data["model"] = model
-    message = await translate(f"Model changed to `{model}`")
-    about = await get_model_info(context)
-
-    if about:
-        message += "\n\n" + about
-
-    new_chat(context)
-
-    await query.edit_message_text(
-        message,
-        reply_markup=query.message.reply_markup,
-        parse_mode=ParseMode.MARKDOWN,
-    )
-
-
-async def get_model_info(context):
-    who_are_you = await translate("Tell me about yourself in two sentences")
-    about = await generate_response(who_are_you, context)
-
-    if about.lower().startswith("error"):
-        try:
-            error_json = json.loads(
-                about[about.find("{") : about.rfind("}") + 1].replace("'", '"')
-            )
-            about = error_json.get("error", about).get("message", about)
-            about = await translate(about) + "\n\n"
-            about += await translate(
-                "Send /model to change the model used to generate responses"
-            )
-        except:
-            pass
-
-    return about
 
 
 async def start_system_prompt(
@@ -189,5 +114,3 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
     message = f"```update_str\n{update_str}```\n\n```e./rror\n{tb_string}\n```\n"
 
     await send_response(message, update, context)
-
-    # await update.message.reply_text(text=message, parse_mode=ParseMode.HTML)

@@ -9,13 +9,13 @@ from telegram.ext import (
     PicklePersistence,
 )
 from groq_chat.llm_conversation import llm_request
+from groq_chat.model_changer import model_command_handler
 from groq_chat.control_panel import control_panel_builder, control_panel_executor
+from groq_chat.model_changer import change_model_callback_handler
 from groq_chat.handlers import (
     start,
     help_command,
     new_command_handler,
-    model_command_handler,
-    change_model_callback_handler,
     SYSTEM_PROMPT_SP,
     CANCEL_SP,
     start_system_prompt,
