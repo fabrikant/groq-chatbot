@@ -60,7 +60,7 @@ async def new_command_handler(
         query = update.callback_query
         chat_id = query.message.chat.id
     else:
-        chat_id = context._chat_id
+        chat_id = update.effective_chat.id
 
     await context.bot.send_message(
         chat_id=chat_id, text=message, parse_mode=ParseMode.MARKDOWN
@@ -105,8 +105,9 @@ async def show_system_prompt(
     if update.callback_query:
         query = update.callback_query
         chat_id = query.message.chat.id
+        await query.answer()
     else:
-        chat_id = context._chat_id
+        chat_id = update.effective_chat.id
 
     if "system_prompt" in context.user_data and context.user_data["system_prompt"]:
         message = context.user_data["system_prompt"]
@@ -145,7 +146,7 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
         query = update.callback_query
         chat_id = query.message.chat.id
     else:
-        chat_id = context._chat_id
+        chat_id = update.effective_chat.id
 
     for item in boxs:
         await context.bot.send_message(

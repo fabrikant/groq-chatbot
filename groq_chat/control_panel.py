@@ -47,6 +47,7 @@ async def control_panel_executor(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
     query = update.callback_query
+    await query.answer()
     command = query.data.replace("ctrl_panel_", "")
 
     need_execute, detail_command = command_matches_pattern(command, "code_in_")

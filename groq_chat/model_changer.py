@@ -30,7 +30,7 @@ async def model_command_handler(
         query = update.callback_query
         chat_id = query.message.chat.id
     else:
-        chat_id = context._chat_id
+        chat_id = update.effective_chat.id
 
     await context.bot.send_chat_action(chat_id, ChatAction.TYPING)
 
@@ -61,7 +61,7 @@ async def change_model_callback_handler(
         query = update.callback_query
         chat_id = query.message.chat.id
     else:
-        chat_id = context._chat_id
+        chat_id = update.effective_chat.id
 
     await context.bot.send_chat_action(chat_id, ChatAction.TYPING)
 
@@ -127,7 +127,7 @@ async def show_model_info(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         query = update.callback_query
         chat_id = query.message.chat.id
     else:
-        chat_id = context._chat_id
+        chat_id = update.effective_chat.id
 
     await context.bot.send_chat_action(chat_id, ChatAction.TYPING)
     message = (
