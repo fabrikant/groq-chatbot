@@ -76,7 +76,10 @@ def start_bot():
 
     app_builder = Application.builder().token(os.getenv("BOT_TOKEN"))
 
-    persistence = PicklePersistence(filepath="./data/telegram-bot-data")
+    dirname = "./data/"
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+    persistence = PicklePersistence(filepath=f"{dirname}telegram-bot-data")
     app_builder.persistence(persistence)
 
     # Build the app
