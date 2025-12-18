@@ -17,7 +17,6 @@ from groq_chat.model_changer import (
 )
 from groq_chat.handlers import (
     start,
-    help_command,
     new_command_handler,
     SYSTEM_PROMPT_SP,
     CANCEL_SP,
@@ -90,26 +89,27 @@ def start_bot():
     app.add_handler(CommandHandler("model", model_command_handler, filters=AuthFilter))
     app.add_handler(CommandHandler("info", show_model_info, filters=AuthFilter))
     app.add_handler(CommandHandler("new", new_command_handler, filters=AuthFilter))
-    app.add_handler(CommandHandler("help", help_command, filters=AuthFilter))
+    # app.add_handler(CommandHandler("help", help_command, filters=AuthFilter))
 
-    # app.add_handler(
-    #     ConversationHandler(
-    #         entry_points=[
-    #             CommandHandler("system_prompt", start_system_prompt, filters=AuthFilter)
-    #         ],
-    #         states={
-    #             SYSTEM_PROMPT_SP: [MessageHandler(MessageFilter, get_system_prompt)],
-    #             CANCEL_SP: [
-    #                 CommandHandler(
-    #                     "cancel", cancelled_system_prompt, filters=AuthFilter
-    #                 )
-    #             ],
-    #         },
-    #         fallbacks=[
-    #             CommandHandler("cancel", cancelled_system_prompt, filters=AuthFilter)
-    #         ],
-    #     )
-    # )
+    app.add_handler(
+        ConversationHandler(
+            entry_points=[
+                CallbackQueryHandler(start_system_prompt, pattern="^set_system_prompt$")
+            ],
+            states={
+                SYSTEM_PROMPT_SP: [MessageHandler(MessageFilter, get_system_prompt)],
+                CANCEL_SP: [
+                    CommandHandler(
+                        "cancel", cancelled_system_prompt, filters=AuthFilter
+                    )
+                ],
+            },
+            fallbacks=[
+                CommandHandler("cancel", cancelled_system_prompt, filters=AuthFilter)
+            ],
+            conversation_timeout=180,
+        )
+    )
 
     app.add_handler(MessageHandler(MessageFilter, llm_request))
     app.add_handler(

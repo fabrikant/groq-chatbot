@@ -16,8 +16,7 @@ from telegramify_markdown.interpreters import (
 )
 
 logger = logging.getLogger(__name__)
-SYSTEM_PROMPT_SP = 1
-CANCEL_SP = 2
+SYSTEM_PROMPT_SP, CANCEL_SP = range(2)
 
 
 async def start(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
@@ -27,28 +26,13 @@ async def start(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
         (
             f"**Hi {user.mention_markdown()}!**\n"
             "Start sending messages with me to generate a response\n"
+            f"{com_descr.panel}\n"
             f"{com_descr.new}\n"
-            f"{com_descr.model}\n"
-            f"{com_descr.help}"
+            f"{com_descr.model}"
+            f"{com_descr.info}"
         )
     )
     await update.message.reply_markdown(message)
-
-
-async def help_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
-    """Send a message when the command /help is issued."""
-    help_text = await translate(
-        (
-            "Available commands:\n"
-            f"{com_descr.new}\n"
-            f"{com_descr.help}\n\n"
-            f"{com_descr.model}\n"
-            f"{com_descr.info}\n"
-            f"{com_descr.system_prompt}\n\n"
-            "Send a message to the bot to generate a response"
-        )
-    )
-    await update.message.reply_text(help_text)
 
 
 async def new_command_handler(
@@ -70,30 +54,49 @@ async def new_command_handler(
 async def start_system_prompt(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
-    """Start a system prompt"""
+    if update.callback_query:
+        query = update.callback_query
+        chat_id = query.message.chat.id
+        await query.answer()
+    else:
+        chat_id = update.effective_chat.id
     message = await translate("system_prompt_instructions")
-    await update.message.reply_text(message)
+    await context.bot.send_message(chat_id=chat_id, text=message)
     return SYSTEM_PROMPT_SP
 
 
 async def cancelled_system_prompt(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
-    """Cancel the system prompt"""
-    message = await translate("System prompt change cancelled.")
+    message = await translate("System prompt change cancelled")
     await update.message.reply_text(message)
     return ConversationHandler.END
+
+
+async def clear_system_prompt(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    if update.callback_query:
+        query = update.callback_query
+        chat_id = query.message.chat.id
+        await query.answer()
+    else:
+        chat_id = update.effective_chat.id
+    current_prompt = context.user_data.pop("system_prompt", None)
+    message = await translate(
+        "The system prompt has been cleared. Value before clearing:"
+    )
+    message += f"\n\n{current_prompt}"
+    await context.bot.send_message(chat_id=chat_id, text=message)
 
 
 async def get_system_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     system_prompt = update.message.text
     if system_prompt.lower().strip() == "clear":
-        context.user_data.pop("system_prompt", None)
-        message = await translate("System prompt cleared.")
-        await update.message.reply_text(message)
+        await clear_system_prompt(update, context)
     else:
         context.user_data["system_prompt"] = system_prompt
-        message = await translate("System prompt changed.")
+        message = await translate("System prompt changed")
         await update.message.reply_text(message)
     new_chat(context)
     return ConversationHandler.END

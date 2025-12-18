@@ -35,12 +35,16 @@
     "ru": "Системная подсказка",
     "en": "System prompt"
   },
-  "Cancel the system prompt": {
-    "ru": "Сбросить системный промпт",
-    "en": "Clear the system prompt"
-  },
   "system_prompt_instructions": {
-    "ru": "Отправьте мне системную подсказку. Если вы хотите очистить системную подсказку, отправьте `clear` сейчас.",
-    "en": "Send me a system prompt. If you want to clear the system prompt, send `clear` now."
-  }
+    "ru": "Введите системный промпт. Если вы хотите очистить промпт, отправьте `clear`. Для выхода из режима изменения промпта /cancel",
+    "en": "Enter the system prompt. If you want to clear the prompt, send clear. To exit prompt‑editing mode, send /cancel."
+  },
+  "System prompt change cancelled": {
+    "ru": "Изменение системного промпта отменено"
+  },
+  "System prompt changed": { "ru": "Системный промпт изменен" },
+  "System prompt not set": { "ru": "Систенмый промпт не установлен" },
+  "Show sytem prompt": { "ru": "Показать системный промпт" },
+  "Clear system prompt": { "ru": "Очистить системный промпт" },
+  "Set system prompt": { "ru": "Установить системный промпт" }
 }
