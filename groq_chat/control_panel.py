@@ -26,7 +26,7 @@ async def control_panel_builder(
         [
             create_key(
                 "reset_context",
-                await translate("Reset model context (remove all messeges)"),
+                await translate("Reset context (delete message history)"),
             ),
         ],
         [create_key("show_prompt", await translate("Show sytem prompt"))],
