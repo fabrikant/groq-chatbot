@@ -42,7 +42,7 @@ async def model_command_handler(
     if len(models) % 2 == 1:
         button_list.append([create_model_key(models[-1])])
     reply_markup = InlineKeyboardMarkup(button_list)
-    message = await translate("select_model")
+    message = await translate("Select model", context)
 
     try:
         await query.message.delete()
@@ -71,7 +71,7 @@ async def change_model_callback_handler(
         await update.message.chat.send_action(ChatAction.TYPING)
 
     context.user_data["model"] = model
-    message = await translate(f"Model changed to `{model}`")
+    message = await translate(f"Model changed to `{model}`", context)
     message = f"# {message}"
 
     about = await get_model_info(update, context)
@@ -103,7 +103,7 @@ async def change_model_callback_handler(
 
 
 async def get_model_info(update, context):
-    who_are_you = await translate("Tell me about yourself in two sentences")
+    who_are_you = await translate("Tell me about yourself in two sentences", context)
     about = await generate_response(who_are_you, context)
 
     if about.lower().startswith("error"):
@@ -112,9 +112,9 @@ async def get_model_info(update, context):
                 about[about.find("{") : about.rfind("}") + 1].replace("'", '"')
             )
             about = error_json.get("error", about).get("message", about)
-            about = await translate(about) + "\n\n"
+            about = await translate(about, context) + "\n\n"
             about += await translate(
-                "Send /model to change the model used to generate responses"
+                "Send /model to change the model used to generate responses", context
             )
         except:
             pass
@@ -131,8 +131,8 @@ async def show_model_info(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     await context.bot.send_chat_action(chat_id, ChatAction.TYPING)
     message = (
-        f"**__{(await translate("Model info"))}:__**\n"
-        f"**{(await translate("Model"))}**: `{context.user_data.get("model", await get_default_model())}`"
+        f"**__{(await translate("Model info", context))}:__**\n"
+        f"**{(await translate("Model", context))}**: `{context.user_data.get("model", await get_default_model())}`"
     )
 
     about = await get_model_info(update, context)

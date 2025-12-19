@@ -1,43 +1,10 @@
 {
-  "select_model": {
-    "ru": "Выберите модель:",
-    "en": "Select Model:"
-  },
-  "generating_response": {
-    "ru": "Генерация ответа...!",
-    "en": "Generating response...!"
-  },
-  "username": {
-    "ru": "Имя пользователя",
-    "en": "User name"
-  },
-  "start": {
-    "ru": "Начать работу",
-    "en": "Start"
-  },
-  "show_help": {
-    "ru": "Показать подсказку",
-    "en": "Show help"
-  },
-  "bot_info": {
-    "ru": "Текущий разговор",
-    "en": "Сurrent conversation"
-  },
-  "new_conversation": {
-    "ru": "Новый разговор",
-    "en": "New conversation"
-  },
-  "choose_model": {
-    "ru": "Выбрать модель",
-    "en": "Choose model"
-  },
   "system_prompt": {
     "ru": "Системная подсказка",
     "en": "System prompt"
   },
-  "system_prompt_instructions": {
-    "ru": "Введите системный промпт. Если вы хотите очистить промпт, отправьте `clear`. Для выхода из режима изменения промпта /cancel",
-    "en": "Enter the system prompt. If you want to clear the prompt, send clear. To exit prompt‑editing mode, send /cancel."
+  "Enter the system prompt. If you want to clear the prompt, send clear. To exit prompt - editing mode, send /cancel.": {
+    "ru": "Введите системный промпт. Если вы хотите очистить промпт, отправьте `clear`. Для выхода из режима изменения промпта /cancel"
   },
   "System prompt change cancelled": {
     "ru": "Изменение системного промпта отменено"

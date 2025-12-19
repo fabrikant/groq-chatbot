@@ -1,6 +1,7 @@
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
+from telegram.constants import ChatAction
 from translate.translate import translate
 import db.async_database as db
 from sqlalchemy import inspect as sa_inspect
@@ -18,30 +19,42 @@ logger = logging.getLogger(__name__)
 async def control_panel_builder(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
+    await update.message.chat.send_action(ChatAction.TYPING)
     button_list = [
         [
-            create_key("select_model", await translate("Select a model")),
-            create_key("model_info", await translate("Model Information")),
+            create_key("select_model", await translate("Select a model", context)),
+            create_key("model_info", await translate("Model Information", context)),
         ],
         [
             create_key(
                 "reset_context",
-                await translate("Reset context (delete message history)"),
+                await translate("Reset context (delete message history)", context),
             ),
         ],
-        [create_key("show_prompt", await translate("Show sytem prompt"))],
+        [create_key("show_prompt", await translate("Show sytem prompt", context))],
         [
             InlineKeyboardButton(
-                text=await translate("Set system prompt"),
+                text=await translate("Set system prompt", context),
                 callback_data="set_system_prompt",
             ),
-            create_key("clear_prompt", await translate("Clear system prompt")),
+            create_key("clear_prompt", await translate("Clear system prompt", context)),
         ],
-        [create_key("code_in_file", await translate("Export text blocks to files"))],
         [
             create_key(
-                "code_in_message", await translate("Output text blocks to messages")
+                "code_in_file", await translate("Export text blocks to files", context)
             )
+        ],
+        [
+            create_key(
+                "code_in_message",
+                await translate("Output text blocks to messages", context),
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text=f"Change language / {await translate("Change language", context)}",
+                callback_data="change_lang",
+            ),
         ],
     ]
 
@@ -96,10 +109,10 @@ async def user_settings_baner(db_record):
 
 
 async def panel_banner(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    message = await translate("Control panel")
+    message = await translate("Control panel", context)
     db_user = await db.get_record_by_id(db.Users, context._user_id)
     if db_user:
-        message += "\n\n" + await translate("User settings:")
+        message += "\n\n" + await translate("User settings:", context)
         message += await user_settings_baner(db_user)
     return message
 
@@ -120,7 +133,9 @@ async def change_file_interpreter(update, context, command):
         getattr(db_record, setting_id, None)
         message = message = await panel_banner(update, context)
     else:
-        message = await translate("An error occurred while setting a new value")
+        message = await translate(
+            "An error occurred while setting a new value", context
+        )
 
     logger.info(message)
     query = update.callback_query

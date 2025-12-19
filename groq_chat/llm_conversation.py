@@ -36,7 +36,7 @@ async def llm_image_request(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     elif message.document and message.document.mime_type.startswith("image/"):
         file_id = message.document.file_id
     else:
-        text = await translate("This is not an image. Send an image.")
+        text = await translate("This is not an image. Send an image.", context)
         await message.reply_text(text)
         return
 
@@ -49,7 +49,7 @@ async def llm_image_request(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     b64_str = b64_bytes.decode("utf-8")
     message = update.message.caption
     if not message:
-        message = await translate("Describe what is shown in the picture")
+        message = await translate("Describe what is shown in the picture", context)
 
     full_output_message = await generate_image_response(b64_str, message, context)
     await send_response(full_output_message, update, context)

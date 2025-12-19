@@ -21,9 +21,14 @@ from groq_chat.handlers import (
     new_command_handler,
     SYSTEM_PROMPT_SP,
     CANCEL_SP,
+    START_CHANGE_LANG,
+    CANCEL_CHANGE_LANG,
     start_system_prompt,
     get_system_prompt,
     cancelled_system_prompt,
+    start_change_lang,
+    get_new_lang,
+    cancelled_change_lang,
     error_handler,
 )
 from groq_chat.groq_chat import set_chatbot
@@ -85,8 +90,8 @@ def start_bot():
     app.add_handler(CommandHandler("model", model_command_handler, filters=AuthFilter))
     app.add_handler(CommandHandler("info", show_model_info, filters=AuthFilter))
     app.add_handler(CommandHandler("new", new_command_handler, filters=AuthFilter))
-    # app.add_handler(CommandHandler("help", help_command, filters=AuthFilter))
 
+    # Установка промпта
     app.add_handler(
         ConversationHandler(
             entry_points=[
@@ -104,6 +109,25 @@ def start_bot():
                 CommandHandler("cancel", cancelled_system_prompt, filters=AuthFilter)
             ],
             conversation_timeout=180,
+        )
+    )
+
+    # Изменение языка
+    app.add_handler(
+        ConversationHandler(
+            entry_points=[
+                CallbackQueryHandler(start_change_lang, pattern="^change_lang$")
+            ],
+            states={
+                START_CHANGE_LANG: [MessageHandler(MessageFilter, get_new_lang)],
+                CANCEL_CHANGE_LANG: [
+                    CommandHandler("cancel", cancelled_change_lang, filters=AuthFilter)
+                ],
+            },
+            fallbacks=[
+                CommandHandler("cancel", cancelled_change_lang, filters=AuthFilter)
+            ],
+            conversation_timeout=90,
         )
     )
 

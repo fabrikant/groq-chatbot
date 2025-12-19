@@ -8,6 +8,7 @@ from translate.translate import translate
 from groq_chat.llm_conversation import send_response
 import groq_chat.command_descriptions as com_descr
 from groq_chat.context import new_chat
+from db.async_database import set_user_setting
 
 import telegramify_markdown
 from telegramify_markdown.interpreters import (
@@ -16,10 +17,10 @@ from telegramify_markdown.interpreters import (
 )
 
 logger = logging.getLogger(__name__)
-SYSTEM_PROMPT_SP, CANCEL_SP = range(2)
+SYSTEM_PROMPT_SP, CANCEL_SP, START_CHANGE_LANG, CANCEL_CHANGE_LANG = range(4)
 
 
-async def start(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
     user = update.effective_user
     message = await translate(
@@ -30,7 +31,8 @@ async def start(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
             f"{com_descr.new}\n"
             f"{com_descr.model}"
             f"{com_descr.info}"
-        )
+        ),
+        context,
     )
     await update.message.reply_markdown(message)
 
@@ -39,7 +41,7 @@ async def new_command_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
     new_chat(context)
-    message = await translate(f"New chat started.\n{com_descr.model}")
+    message = await translate(f"New chat started.\n{com_descr.model}", context)
     if update.callback_query:
         query = update.callback_query
         chat_id = query.message.chat.id
@@ -60,7 +62,10 @@ async def start_system_prompt(
         await query.answer()
     else:
         chat_id = update.effective_chat.id
-    message = await translate("system_prompt_instructions")
+    message = await translate(
+        "Enter the system prompt. If you want to clear the prompt, send clear. To exit prompt - editing mode, send /cancel.",
+        context,
+    )
     await context.bot.send_message(chat_id=chat_id, text=message)
     return SYSTEM_PROMPT_SP
 
@@ -68,7 +73,7 @@ async def start_system_prompt(
 async def cancelled_system_prompt(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
-    message = await translate("System prompt change cancelled")
+    message = await translate("System prompt change cancelled", context)
     await update.message.reply_text(message)
     return ConversationHandler.END
 
@@ -84,7 +89,7 @@ async def clear_system_prompt(
         chat_id = update.effective_chat.id
     current_prompt = context.user_data.pop("system_prompt", None)
     message = await translate(
-        "The system prompt has been cleared. Value before clearing:"
+        "The system prompt has been cleared. Value before clearing:", context
     )
     message += f"\n\n{current_prompt}"
     await context.bot.send_message(chat_id=chat_id, text=message)
@@ -96,7 +101,7 @@ async def get_system_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         await clear_system_prompt(update, context)
     else:
         context.user_data["system_prompt"] = system_prompt
-        message = await translate("System prompt changed")
+        message = await translate("System prompt changed", context)
         await update.message.reply_text(message)
     new_chat(context)
     return ConversationHandler.END
@@ -115,9 +120,59 @@ async def show_system_prompt(
     if "system_prompt" in context.user_data and context.user_data["system_prompt"]:
         message = context.user_data["system_prompt"]
     else:
-        message = await translate("System prompt not set")
+        message = await translate("System prompt not set", context)
 
     await context.bot.send_message(chat_id=chat_id, text=message)
+
+
+#     start_change_lang,
+# get_new_lang,
+# cancelled_change_lang,
+
+
+async def start_change_lang(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.callback_query:
+        query = update.callback_query
+        chat_id = query.message.chat.id
+        await query.answer()
+    else:
+        chat_id = update.effective_chat.id
+    message = "Enter the language code (en, ru, fr, cn ...). To exit language - editing mode, send /cancel"
+    await context.bot.send_message(chat_id=chat_id, text=message)
+    return START_CHANGE_LANG
+
+
+async def get_new_lang(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    lang = update.message.text
+    if update.callback_query:
+        query = update.callback_query
+        chat_id = query.message.chat.id
+    else:
+        chat_id = update.effective_chat.id
+
+    await set_user_setting(chat_id, "lang", lang)
+    context.user_data["LANG"] = lang
+
+    message = "The language code installed is"
+    message_trans = None
+    if lang != "en":
+        message_trans = f"{await translate(message, context)}: {lang}"
+    message += f": {lang}"
+    if message_trans:
+        message += f"\n{message_trans}"
+
+    await update.message.reply_text(message)
+    return ConversationHandler.END
+
+
+async def cancelled_change_lang(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    message = "Language change cancelled"
+    if message != "en":
+        message = f"\n{await translate(message, context)}"
+    await update.message.reply_text(message)
+    return ConversationHandler.END
 
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
