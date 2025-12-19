@@ -125,11 +125,6 @@ async def show_system_prompt(
     await context.bot.send_message(chat_id=chat_id, text=message)
 
 
-#     start_change_lang,
-# get_new_lang,
-# cancelled_change_lang,
-
-
 async def start_change_lang(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.callback_query:
         query = update.callback_query
