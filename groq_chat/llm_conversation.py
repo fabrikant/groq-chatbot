@@ -2,7 +2,8 @@ import logging
 from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.constants import ChatAction
-from groq_chat.groq_chat import generate_response
+from groq_chat.groq_chat import generate_response, generate_image_response
+from translate.translate import translate
 import telegramify_markdown
 from telegramify_markdown.interpreters import (
     TextInterpreter,
@@ -16,13 +17,42 @@ import io
 from telegram import InputFile
 from telegramify_markdown.customize import get_runtime_config
 import db.async_database as db
+import base64
 
 logger = logging.getLogger(__name__)
+
 
 # get_runtime_config().markdown_symbol.head_level_1 = "#"
 # get_runtime_config().markdown_symbol.head_level_2 = "##"
 # get_runtime_config().markdown_symbol.head_level_3 = "###"
 # get_runtime_config().markdown_symbol.head_level_4 = "####"
+
+
+async def llm_image_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    message = update.message
+
+    if message.photo:
+        file_id = message.photo[-1].file_id
+    elif message.document and message.document.mime_type.startswith("image/"):
+        file_id = message.document.file_id
+    else:
+        text = await translate("This is not an image. Send an image.")
+        await message.reply_text(text)
+        return
+
+    await update.message.chat.send_action(ChatAction.TYPING)
+
+    tg_file = await context.bot.get_file(file_id)
+    file_bytes = await tg_file.download_as_bytearray()  # тип: bytes
+
+    b64_bytes = base64.b64encode(file_bytes)
+    b64_str = b64_bytes.decode("utf-8")
+    message = update.message.caption
+    if not message:
+        message = await translate("Describe what is shown in the picture")
+
+    full_output_message = await generate_image_response(b64_str, message, context)
+    await send_response(full_output_message, update, context)
 
 
 async def llm_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

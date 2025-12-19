@@ -46,13 +46,7 @@ async def get_default_model() -> str:
         return default_model_name
 
 
-async def generate_response(message: str, context: ContextTypes.DEFAULT_TYPE) -> str:
-    context.user_data["messages"] = context.user_data.get("messages", []) + [
-        {
-            "role": "user",
-            "content": message,
-        }
-    ]
+async def groq_chat_completion_create(context: ContextTypes.DEFAULT_TYPE) -> str:
 
     full_request_content = []
     prompt_str = context.user_data.get("system_prompt", None)
@@ -60,8 +54,8 @@ async def generate_response(message: str, context: ContextTypes.DEFAULT_TYPE) ->
         full_request_content += [{"role": "system", "content": prompt_str}]
 
     full_request_content += context.user_data["messages"]
-
     full_response_content = ""
+
     try:
         completion = await chatbot.chat.completions.create(
             messages=full_request_content,
@@ -76,3 +70,36 @@ async def generate_response(message: str, context: ContextTypes.DEFAULT_TYPE) ->
 
     except groq.GroqError as e:
         return f"Error: {e}\nStart a new conversation, click /new"
+
+
+async def generate_image_response(
+    base64_image: str, message: str, context: ContextTypes.DEFAULT_TYPE
+) -> str:
+
+    context.user_data["messages"] = context.user_data.get("messages", []) + [
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": message},
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{base64_image}",
+                    },
+                },
+            ],
+        }
+    ]
+
+    return await groq_chat_completion_create(context)
+
+
+async def generate_response(message: str, context: ContextTypes.DEFAULT_TYPE) -> str:
+    context.user_data["messages"] = context.user_data.get("messages", []) + [
+        {
+            "role": "user",
+            "content": message,
+        }
+    ]
+
+    return await groq_chat_completion_create(context)
