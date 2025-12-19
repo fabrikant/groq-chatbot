@@ -34,7 +34,7 @@ from groq_chat.handlers import (
 from groq_chat.groq_chat import set_chatbot
 from groq import AsyncGroq
 import httpx
-from groq_chat.filters import AuthFilter, MessageFilter
+from groq_chat.filters import AuthFilter, MessageFilter, PhotoFilter
 from dotenv import load_dotenv
 import logging
 from telegram import Update, BotCommand
@@ -132,8 +132,7 @@ def start_bot():
     )
 
     app.add_handler(MessageHandler(MessageFilter, llm_request))
-    image_filter = filters.PHOTO | (filters.Document.IMAGE)
-    app.add_handler(MessageHandler(image_filter, llm_image_request))
+    app.add_handler(MessageHandler(PhotoFilter, llm_image_request))
 
     app.add_handler(
         CallbackQueryHandler(change_model_callback_handler, pattern="^change_model_")

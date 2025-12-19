@@ -1,6 +1,6 @@
 import os
 from telegram import Update
-from telegram.ext.filters import UpdateFilter, COMMAND, TEXT, PHOTO
+from telegram.ext.filters import UpdateFilter, COMMAND, TEXT, PHOTO, Document
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -22,4 +22,4 @@ class AuthorizedUserFilter(UpdateFilter):
 
 AuthFilter = AuthorizedUserFilter()
 MessageFilter = AuthFilter & ~COMMAND & TEXT
-PhotoFilter = AuthFilter & ~COMMAND & PHOTO
+PhotoFilter = AuthFilter & ~COMMAND & (PHOTO | Document.IMAGE)
