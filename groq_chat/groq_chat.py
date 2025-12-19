@@ -1,7 +1,8 @@
+import os
 from dotenv import load_dotenv
 import groq
 from telegram.ext import ContextTypes
-import os
+from translate.translate import translate
 
 load_dotenv()
 
@@ -69,7 +70,15 @@ async def groq_chat_completion_create(context: ContextTypes.DEFAULT_TYPE) -> str
         return full_response_content
 
     except groq.GroqError as e:
-        return f"Error: {e}\nStart a new conversation, click /new"
+
+        message = e.body.get("error", {}).get("message")
+        status_code = e.status_code
+        if status_code == 413:
+            message += await translate(
+                "\nTry resetting the context. Use the command /new", context
+            )
+
+        return f"{await translate("Groq API returned an error", context)}: {status_code} ({message})"
 
 
 async def generate_image_response(
