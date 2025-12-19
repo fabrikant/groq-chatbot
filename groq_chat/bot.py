@@ -46,13 +46,8 @@ logger = logging.getLogger(__name__)
 async def set_bot_commands(app):
 
     commands = [
-        BotCommand("start", await translate(com_descr.start)),
-        BotCommand("panel", await translate(com_descr.panel)),
-        # BotCommand("model", await translate(com_descr.model)),
-        # BotCommand("new", await translate(com_descr.new)),
-        # BotCommand("info", await translate(com_descr.info)),
-        # BotCommand("help", await translate(com_descr.help)),
-        # BotCommand("system_prompt", await translate(com_descr.system_prompt)),
+        BotCommand("start", com_descr.start),
+        BotCommand("panel", com_descr.panel),
     ]
     # `app.bot` уже инициализирован к моменту вызова `run_polling()`
     await app.bot.set_my_commands(commands)

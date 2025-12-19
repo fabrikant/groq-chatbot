@@ -4,4 +4,4 @@ model = (
     "/model - change the model used to generate responses (the context will be cleared)"
 )
 info = "/info - get info about the current chat session"
-panel = "/panel - Control panel"
+panel = "/panel - control panel"
