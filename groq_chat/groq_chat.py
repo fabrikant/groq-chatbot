@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 import groq
 from telegram.ext import ContextTypes
 from translate.translate import translate
+from io import BytesIO
 
 load_dotenv()
 
@@ -104,17 +105,17 @@ async def generate_image_response(
 
 
 async def generate_audio_response(
-    file_path, message: str, context: ContextTypes.DEFAULT_TYPE
+    audio_bytes: bytes, message: str, context: ContextTypes.DEFAULT_TYPE
 ) -> str:
-
-    with open(file_path, "rb") as file:
-        transcription = await chatbot.audio.transcriptions.create(
-            file=file,
-            model=context.user_data.get("model", await get_default_model()),
-            prompt=message,
-            response_format="text",
-        )
-        return transcription
+    audio_file = BytesIO(audio_bytes)
+    audio_file.name = "voice_message.ogg"
+    transcription = await chatbot.audio.transcriptions.create(
+        file=audio_file,
+        model=context.user_data.get("model", await get_default_model()),
+        prompt=message,
+        response_format="text",
+    )
+    return transcription
 
 
 async def generate_response(message: str, context: ContextTypes.DEFAULT_TYPE) -> str:

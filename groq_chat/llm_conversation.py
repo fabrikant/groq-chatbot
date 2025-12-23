@@ -25,6 +25,7 @@ import base64
 import tempfile
 import pathlib
 import os
+from io import BytesIO
 
 logger = logging.getLogger(__name__)
 
@@ -44,18 +45,12 @@ async def llm_audio_request(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     )
     message = update.message.caption
 
-    tmp_dir = tempfile.gettempdir()
-    tmp_name = tempfile.mktemp(dir=tmp_dir, suffix=".ogg")
-    tmp_path = pathlib.Path(tmp_name)
+    bio = BytesIO()
+    await tg_file.download_to_memory(bio)
+    bio.seek(0)
+    audio_bytes = bio.read()
 
-    file_path = await tg_file.download_to_drive(tmp_path)
-
-    full_output_message = await generate_audio_response(file_path, message, context)
-    try:
-        os.remove(file_path)
-    except:
-        logger.error(f"Не удалось удалить темповый файл {file_path}")
-
+    full_output_message = await generate_audio_response(audio_bytes, message, context)
     await send_response(full_output_message, update, context)
 
 
