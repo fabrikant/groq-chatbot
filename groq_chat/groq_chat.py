@@ -105,12 +105,10 @@ async def generate_image_response(
 
 
 async def generate_audio_response(
-    audio_bytes: bytes, message: str, context: ContextTypes.DEFAULT_TYPE
+    audio_bytes: BytesIO, message: str, context: ContextTypes.DEFAULT_TYPE
 ) -> str:
-    audio_file = BytesIO(audio_bytes)
-    audio_file.name = "voice_message.ogg"
     transcription = await chatbot.audio.transcriptions.create(
-        file=audio_file,
+        file=audio_bytes,
         model=context.user_data.get("model", await get_default_model()),
         prompt=message,
         response_format="text",

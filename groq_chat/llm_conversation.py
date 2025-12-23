@@ -47,10 +47,9 @@ async def llm_audio_request(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     bio = BytesIO()
     await tg_file.download_to_memory(bio)
-    bio.seek(0)
-    audio_bytes = bio.read()
+    bio.name = "audio_message.ogg"
 
-    full_output_message = await generate_audio_response(audio_bytes, message, context)
+    full_output_message = await generate_audio_response(bio, message, context)
     await send_response(full_output_message, update, context)
 
 
