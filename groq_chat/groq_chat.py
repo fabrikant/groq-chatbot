@@ -107,13 +107,24 @@ async def generate_image_response(
 async def generate_audio_response(
     audio_bytes: BytesIO, message: str, context: ContextTypes.DEFAULT_TYPE
 ) -> str:
-    transcription = await chatbot.audio.transcriptions.create(
-        file=audio_bytes,
-        model=context.user_data.get("model", await get_default_model()),
-        prompt=message,
-        response_format="text",
-    )
-    return transcription
+    try:
+        transcription = await chatbot.audio.transcriptions.create(
+            file=audio_bytes,
+            model=context.user_data.get("model", await get_default_model()),
+            prompt=message,
+            response_format="text",
+        )
+        return transcription
+    except groq.GroqError as e:
+
+        message = e.body.get("error", {}).get("message")
+        status_code = e.status_code
+        if status_code == 413:
+            message += await translate(
+                "\nTry resetting the context. Use the command /new", context
+            )
+
+        return f"{await translate("Groq API returned an error", context)}: {status_code} ({message})"
 
 
 async def generate_response(message: str, context: ContextTypes.DEFAULT_TYPE) -> str:
