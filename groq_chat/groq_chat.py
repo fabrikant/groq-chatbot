@@ -125,6 +125,8 @@ async def generate_audio_response(
             )
 
         return f"{await translate("Groq API returned an error", context)}: {status_code} ({message})"
+    except Exception as e:
+        return str(e)
 
 
 async def generate_response(message: str, context: ContextTypes.DEFAULT_TYPE) -> str:

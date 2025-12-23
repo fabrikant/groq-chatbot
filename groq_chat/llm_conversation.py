@@ -38,19 +38,25 @@ logger = logging.getLogger(__name__)
 
 async def llm_audio_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.chat.send_action(ChatAction.TYPING)
-    tg_file = await context.bot.get_file(
-        update.effective_message.voice
-        or update.effective_message.audio
-        or update.effective_message.document
-    )
-    message = update.message.caption
+    try:
+        tg_file = await context.bot.get_file(
+            update.effective_message.voice
+            or update.effective_message.audio
+            or update.effective_message.document
+        )
+        message = update.message.caption
 
-    bio = BytesIO()
-    await tg_file.download_to_memory(bio)
-    bio.name = "audio_message.ogg"
+        bio = BytesIO()
+        await tg_file.download_to_memory(bio)
+        bio.name = "audio_message.ogg"
 
-    full_output_message = await generate_audio_response(bio, message, context)
-    await send_response(full_output_message, update, context)
+        full_output_message = await generate_audio_response(bio, message, context)
+        await send_response(full_output_message, update, context)
+    except Exception as e:
+        if hasattr(e, "message"):
+            await send_response(e.message, update, context)
+        else:
+            raise e
 
 
 async def llm_image_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
