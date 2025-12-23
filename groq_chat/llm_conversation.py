@@ -2,7 +2,11 @@ import logging
 from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.constants import ChatAction
-from groq_chat.groq_chat import generate_response, generate_image_response
+from groq_chat.groq_chat import (
+    generate_response,
+    generate_image_response,
+    generate_audio_response,
+)
 from translate.translate import translate
 import telegramify_markdown
 from telegramify_markdown.interpreters import (
@@ -18,6 +22,9 @@ from telegram import InputFile
 from telegramify_markdown.customize import get_runtime_config
 import db.async_database as db
 import base64
+import tempfile
+import pathlib
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +33,30 @@ logger = logging.getLogger(__name__)
 # get_runtime_config().markdown_symbol.head_level_2 = "##"
 # get_runtime_config().markdown_symbol.head_level_3 = "###"
 # get_runtime_config().markdown_symbol.head_level_4 = "####"
+
+
+async def llm_audio_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.message.chat.send_action(ChatAction.TYPING)
+    tg_file = await context.bot.get_file(
+        update.effective_message.voice
+        or update.effective_message.audio
+        or update.effective_message.document
+    )
+    message = update.message.caption
+
+    tmp_dir = tempfile.gettempdir()
+    tmp_name = tempfile.mktemp(dir=tmp_dir, suffix=".ogg")
+    tmp_path = pathlib.Path(tmp_name)
+
+    file_path = await tg_file.download_to_drive(tmp_path)
+
+    full_output_message = await generate_audio_response(file_path, message, context)
+    try:
+        os.remove(file_path)
+    except:
+        logger.error(f"Не удалось удалить темповый файл {file_path}")
+
+    await send_response(full_output_message, update, context)
 
 
 async def llm_image_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -43,7 +74,7 @@ async def llm_image_request(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     await update.message.chat.send_action(ChatAction.TYPING)
 
     tg_file = await context.bot.get_file(file_id)
-    file_bytes = await tg_file.download_as_bytearray()  # тип: bytes
+    file_bytes = await tg_file.download_as_bytearray()
 
     b64_bytes = base64.b64encode(file_bytes)
     b64_str = b64_bytes.decode("utf-8")

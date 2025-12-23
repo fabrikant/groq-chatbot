@@ -103,6 +103,20 @@ async def generate_image_response(
     return await groq_chat_completion_create(context)
 
 
+async def generate_audio_response(
+    file_path, message: str, context: ContextTypes.DEFAULT_TYPE
+) -> str:
+
+    with open(file_path, "rb") as file:
+        transcription = await chatbot.audio.transcriptions.create(
+            file=file,
+            model=context.user_data.get("model", await get_default_model()),
+            prompt=message,
+            response_format="text",
+        )
+        return transcription
+
+
 async def generate_response(message: str, context: ContextTypes.DEFAULT_TYPE) -> str:
     context.user_data["messages"] = context.user_data.get("messages", []) + [
         {

@@ -9,7 +9,7 @@ from telegram.ext import (
     PicklePersistence,
     filters,
 )
-from groq_chat.llm_conversation import llm_request, llm_image_request
+from groq_chat.llm_conversation import llm_request, llm_image_request, llm_audio_request
 from groq_chat.control_panel import control_panel_builder, control_panel_executor
 from groq_chat.model_changer import (
     change_model_callback_handler,
@@ -34,7 +34,7 @@ from groq_chat.handlers import (
 from groq_chat.groq_chat import set_chatbot
 from groq import AsyncGroq
 import httpx
-from groq_chat.filters import AuthFilter, MessageFilter, PhotoFilter
+from groq_chat.filters import AuthFilter, MessageFilter, PhotoFilter, AudioFilter
 from dotenv import load_dotenv
 import logging
 from telegram import Update, BotCommand
@@ -133,6 +133,7 @@ def start_bot():
 
     app.add_handler(MessageHandler(MessageFilter, llm_request))
     app.add_handler(MessageHandler(PhotoFilter, llm_image_request))
+    app.add_handler(MessageHandler(AudioFilter, llm_audio_request))
 
     app.add_handler(
         CallbackQueryHandler(change_model_callback_handler, pattern="^change_model_")
