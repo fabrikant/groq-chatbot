@@ -2,6 +2,7 @@ import logging
 from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.constants import ChatAction
+from telegram.error import BadRequest
 from groq_chat.groq_chat import (
     generate_response,
     generate_image_response,
@@ -22,9 +23,6 @@ from telegram import InputFile
 from telegramify_markdown.customize import get_runtime_config
 import db.async_database as db
 import base64
-import tempfile
-import pathlib
-import os
 from io import BytesIO
 
 logger = logging.getLogger(__name__)
@@ -133,9 +131,15 @@ async def send_response(
     for item in boxs:
 
         if item.content_type == ContentTypes.TEXT:
-            await update.message.reply_text(
-                item.content, parse_mode=ParseMode.MARKDOWN_V2
-            )
+            try:
+                await update.message.reply_text(
+                    item.content, parse_mode=ParseMode.MARKDOWN_V2
+                )
+            except BadRequest as e:
+                if "parse" in str(e).lower():
+                    # Если ошибки форматирования, отправляем без него
+                    await update.message.reply_text(item.content, parse_mode=None)
+
         elif item.content_type == ContentTypes.PHOTO:
             await context.bot.send_photo(
                 chat_id=update.effective_chat.id,
