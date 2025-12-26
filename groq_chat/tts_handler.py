@@ -66,18 +66,19 @@ async def get_tts_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     audio_io = io.BytesIO(audio_bytes)
     audio_io.name = "response.wav"  # <-- подгоните под ваш формат
 
-    # # Пример с voice‑сообщением (рекомендовано для коротких TTS‑ответов):
-    # await context.bot.send_voice(
-    #     chat_id=update.effective_chat.id,
-    #     voice=audio_io,
-    #     caption=await translate("Here is the audio response:", context),
-    # )
-
-    await context.bot.send_audio(
+    # Пример с voice‑сообщением (рекомендовано для коротких TTS‑ответов):
+    await context.bot.send_voice(
         chat_id=update.effective_chat.id,
-        audio=audio_io,
+        voice=audio_io,
         caption=await translate("Here is the audio response:", context),
     )
+
+    # Пример с аудио‑файлом (подходит для длинных TTS‑ответов):
+    # await context.bot.send_audio(
+    #     chat_id=update.effective_chat.id,
+    #     audio=audio_io,
+    #     caption=await translate("Here is the audio response:", context),
+    # )
 
     return ConversationHandler.END
 
