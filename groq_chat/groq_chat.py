@@ -85,7 +85,7 @@ async def groq_chat_completion_create(
         return f"{await translate("Groq API returned an error", context)}: {status_code} ({message})"
 
 
-async def generate_image_response(
+async def generate_ocr_response(
     base64_image: str, message: str, context: ContextTypes.DEFAULT_TYPE
 ) -> str:
 
@@ -112,7 +112,7 @@ async def generate_image_response(
     return await groq_chat_completion_create(context, model=model)
 
 
-async def generate_audio_response(
+async def generate_stt_response(
     audio_bytes: BytesIO, message: str, context: ContextTypes.DEFAULT_TYPE
 ) -> str:
     try:
@@ -137,6 +137,32 @@ async def generate_audio_response(
                 "\nTry resetting the context. Use the command /new", context
             )
 
+        return f"{await translate("Groq API returned an error", context)}: {status_code} ({message})"
+    except Exception as e:
+        return str(e)
+
+
+async def generate_tts_response(
+    message: str, context: ContextTypes.DEFAULT_TYPE
+) -> str:
+    model = await get_user_setting(
+        context._user_id,
+        "tts_model",
+        context.user_data.get("model", await get_default_model()),
+    )
+    try:
+        response = await chatbot.audio.speech.create(
+            model=model,
+            voice="autumn",
+            response_format="wav",
+            input=message,
+        )
+        # await response.stream_to_file("./data/response.wav")
+        return response
+
+    except groq.GroqError as e:
+        message = e.body.get("error", {}).get("message")
+        status_code = e.status_code
         return f"{await translate("Groq API returned an error", context)}: {status_code} ({message})"
     except Exception as e:
         return str(e)

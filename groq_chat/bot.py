@@ -17,6 +17,11 @@ from groq_chat.model_changer import (
     show_model_info,
     set_model_default_executor,
 )
+from groq_chat.tts_handler import (
+    tts_command_handler,
+    cancelled_tts_mode,
+    get_tts_message,
+)
 from groq_chat.handlers import (
     start,
     new_command_handler,
@@ -24,6 +29,8 @@ from groq_chat.handlers import (
     CANCEL_SP,
     START_CHANGE_LANG,
     CANCEL_CHANGE_LANG,
+    START_TTS,
+    CANCEL_TTS,
     start_system_prompt,
     get_system_prompt,
     cancelled_system_prompt,
@@ -54,6 +61,7 @@ async def set_bot_commands(app):
     commands = [
         BotCommand("start", com_descr.start),
         BotCommand("panel", com_descr.panel),
+        BotCommand("tts", com_descr.tts),
     ]
     # `app.bot` уже инициализирован к моменту вызова `run_polling()`
     await app.bot.set_my_commands(commands)
@@ -127,6 +135,23 @@ def start_bot():
             },
             fallbacks=[
                 CommandHandler("cancel", cancelled_change_lang, filters=AuthFilter)
+            ],
+            conversation_timeout=90,
+        )
+    )
+
+    # Перехот в tts режим
+    app.add_handler(
+        ConversationHandler(
+            entry_points=[
+                CommandHandler("tts", tts_command_handler, filters=AuthFilter)
+            ],
+            states={
+                START_TTS: [MessageHandler(MessageFilter, get_tts_message)],
+                CANCEL_TTS: [MessageHandler(MessageFilter, cancelled_tts_mode)],
+            },
+            fallbacks=[
+                CommandHandler("cancel", cancelled_tts_mode, filters=AuthFilter)
             ],
             conversation_timeout=90,
         )

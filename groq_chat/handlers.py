@@ -17,7 +17,14 @@ from telegramify_markdown.interpreters import (
 )
 
 logger = logging.getLogger(__name__)
-SYSTEM_PROMPT_SP, CANCEL_SP, START_CHANGE_LANG, CANCEL_CHANGE_LANG = range(4)
+(
+    SYSTEM_PROMPT_SP,
+    CANCEL_SP,
+    START_CHANGE_LANG,
+    CANCEL_CHANGE_LANG,
+    START_TTS,
+    CANCEL_TTS,
+) = range(6)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -30,7 +37,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             f"{com_descr.panel}\n"
             f"{com_descr.new}\n"
             f"{com_descr.model}\n"
-            f"{com_descr.info}"
+            f"{com_descr.info}\n"
+            f"{com_descr.tts}"
         ),
         context,
     )

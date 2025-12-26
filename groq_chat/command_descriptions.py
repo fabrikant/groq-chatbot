@@ -5,3 +5,4 @@ model = (
 )
 info = "/info - get info about the current model"
 panel = "/panel - control panel"
+tts = "/tts - convert text to speech"

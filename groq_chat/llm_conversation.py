@@ -5,8 +5,8 @@ from telegram.constants import ChatAction
 from telegram.error import BadRequest
 from groq_chat.groq_chat import (
     generate_response,
-    generate_image_response,
-    generate_audio_response,
+    generate_ocr_response,
+    generate_stt_response,
 )
 from translate.translate import translate
 import telegramify_markdown
@@ -48,7 +48,7 @@ async def llm_audio_request(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         await tg_file.download_to_memory(bio)
         bio.name = "audio_message.ogg"
 
-        full_output_message = await generate_audio_response(bio, message, context)
+        full_output_message = await generate_stt_response(bio, message, context)
         await send_response(full_output_message, update, context)
     except Exception as e:
         if hasattr(e, "message"):
@@ -80,7 +80,7 @@ async def llm_image_request(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     if not message:
         message = await translate("Describe what is shown in the picture", context)
 
-    full_output_message = await generate_image_response(b64_str, message, context)
+    full_output_message = await generate_ocr_response(b64_str, message, context)
     await send_response(full_output_message, update, context)
 
 
