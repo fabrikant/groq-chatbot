@@ -13,7 +13,7 @@ from telegramify_markdown.interpreters import (
     TextInterpreter,
     InterpreterChain,
 )
-
+from db.async_database import set_user_setting
 
 logger = logging.getLogger(__name__)
 
@@ -60,46 +60,47 @@ async def change_model_callback_handler(
     if update.callback_query:
         query = update.callback_query
         chat_id = query.message.chat.id
+        await query.answer()
     else:
         chat_id = update.effective_chat.id
 
     await context.bot.send_chat_action(chat_id, ChatAction.TYPING)
-
-    model = query.data.replace("change_model_", "")
-
     if update.message:
         await update.message.chat.send_action(ChatAction.TYPING)
 
+    model = query.data.replace("change_model_", "")
     context.user_data["model"] = model
-    message = await translate(f"Model changed to `{model}`", context)
-    message = f"# {message}"
+    await show_model_info(update, context)
 
-    about = await get_model_info(update, context)
+    # message = await translate(f"Model changed to `{model}`", context)
+    # message = f"# {message}"
 
-    if about:
-        message += "\n\n" + about
-    new_chat(context)
+    # about = await get_model_info(update, context)
 
-    interpreter_chain = InterpreterChain(
-        [
-            TextInterpreter(),
-        ]
-    )
+    # if about:
+    #     message += "\n\n" + about
+    # new_chat(context)
 
-    boxs = await telegramify_markdown.telegramify(
-        content=message,
-        interpreters_use=interpreter_chain,
-        latex_escape=True,
-        normalize_whitespace=True,
-        max_word_count=4000,
-    )
+    # interpreter_chain = InterpreterChain(
+    #     [
+    #         TextInterpreter(),
+    #     ]
+    # )
 
-    for item in boxs:
-        await query.edit_message_text(
-            item.content,
-            reply_markup=query.message.reply_markup,
-            parse_mode=ParseMode.MARKDOWN_V2,
-        )
+    # boxs = await telegramify_markdown.telegramify(
+    #     content=message,
+    #     interpreters_use=interpreter_chain,
+    #     latex_escape=True,
+    #     normalize_whitespace=True,
+    #     max_word_count=4000,
+    # )
+
+    # for item in boxs:
+    #     await query.edit_message_text(
+    #         item.content,
+    #         reply_markup=query.message.reply_markup,
+    #         parse_mode=ParseMode.MARKDOWN_V2,
+    #     )
 
 
 async def get_model_info(update, context):
@@ -122,23 +123,71 @@ async def get_model_info(update, context):
     return about
 
 
+def create_key(id: str, descriptipn: str) -> InlineKeyboardButton:
+    return InlineKeyboardButton(text=descriptipn, callback_data="set_default_" + id)
+
+
 async def show_model_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.callback_query:
         query = update.callback_query
         chat_id = query.message.chat.id
+        await query.answer()
     else:
         chat_id = update.effective_chat.id
 
     await context.bot.send_chat_action(chat_id, ChatAction.TYPING)
+    model = context.user_data.get("model", await get_default_model())
     message = (
         f"**__{(await translate("Model info", context))}:__**\n"
-        f"**{(await translate("Model", context))}**: `{context.user_data.get("model", await get_default_model())}`"
+        f"**{(await translate("Model", context))}**: `{model}`"
     )
 
     about = await get_model_info(update, context)
     if about:
         message += "\n\n" + about
 
+    button_list = [
+        [
+            create_key(
+                f"ocr_{model}",
+                await translate("Set default for OCR", context),
+            ),
+        ],
+        [
+            create_key(
+                f"tts_{model}",
+                await translate("Set default for TTS", context),
+            ),
+        ],
+        [
+            create_key(
+                f"stt_{model}",
+                await translate("Set default for STT", context),
+            ),
+        ],
+    ]
+
+    markup = InlineKeyboardMarkup(button_list)
     await context.bot.send_message(
-        chat_id=chat_id, text=message, parse_mode=ParseMode.MARKDOWN
+        chat_id=chat_id,
+        text=message,
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=markup,
+    )
+
+
+async def set_model_default_executor(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    query = update.callback_query
+    await query.answer()
+    command = query.data.replace("set_default_", "")
+    parts = command.split("_", 1)
+    setting_type = parts[0]
+    model_name = parts[1]
+    user_id = context._user_id
+    setting_id = f"{setting_type}_model"
+    await set_user_setting(user_id, setting_id, model_name)
+    await query.edit_message_text(
+        await translate("Default model set successfully", context)
     )

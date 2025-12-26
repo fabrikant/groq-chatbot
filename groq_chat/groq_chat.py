@@ -4,6 +4,7 @@ import groq
 from telegram.ext import ContextTypes
 from translate.translate import translate
 from io import BytesIO
+from db.async_database import get_user_setting
 
 load_dotenv()
 
@@ -36,7 +37,7 @@ async def get_default_model() -> str:
     global available_models
     if not available_models:
         await get_groq_models()
-    default_model_name = os.getenv("DEFAULT_GROQ_MODEL", "llama-3.1-8b-instant")
+    default_model_name = os.getenv("DEFAULT_GROQ_MODEL", "llama-3.3-70b-versatile")
     if available_models:
         if default_model_name in available_models:
             return default_model_name
@@ -48,7 +49,9 @@ async def get_default_model() -> str:
         return default_model_name
 
 
-async def groq_chat_completion_create(context: ContextTypes.DEFAULT_TYPE) -> str:
+async def groq_chat_completion_create(
+    context: ContextTypes.DEFAULT_TYPE, model: str
+) -> str:
 
     full_request_content = []
     prompt_str = context.user_data.get("system_prompt", None)
@@ -61,7 +64,7 @@ async def groq_chat_completion_create(context: ContextTypes.DEFAULT_TYPE) -> str
     try:
         completion = await chatbot.chat.completions.create(
             messages=full_request_content,
-            model=context.user_data.get("model", await get_default_model()),
+            model=model,
             stream=False,
         )
 
@@ -86,6 +89,11 @@ async def generate_image_response(
     base64_image: str, message: str, context: ContextTypes.DEFAULT_TYPE
 ) -> str:
 
+    model = await get_user_setting(
+        context._user_id,
+        "ocr_model",
+        context.user_data.get("model", await get_default_model()),
+    )
     context.user_data["messages"] = context.user_data.get("messages", []) + [
         {
             "role": "user",
@@ -101,16 +109,21 @@ async def generate_image_response(
         }
     ]
 
-    return await groq_chat_completion_create(context)
+    return await groq_chat_completion_create(context, model=model)
 
 
 async def generate_audio_response(
     audio_bytes: BytesIO, message: str, context: ContextTypes.DEFAULT_TYPE
 ) -> str:
     try:
+        model = await get_user_setting(
+            context._user_id,
+            "stt_model",
+            context.user_data.get("model", await get_default_model()),
+        )
         transcription = await chatbot.audio.transcriptions.create(
             file=audio_bytes,
-            model=context.user_data.get("model", await get_default_model()),
+            model=model,
             prompt=message,
             response_format="text",
         )
@@ -136,5 +149,5 @@ async def generate_response(message: str, context: ContextTypes.DEFAULT_TYPE) ->
             "content": message,
         }
     ]
-
-    return await groq_chat_completion_create(context)
+    model = context.user_data.get("model", await get_default_model())
+    return await groq_chat_completion_create(context, model=model)

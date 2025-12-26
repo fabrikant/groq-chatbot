@@ -12,6 +12,7 @@ from groq_chat.handlers import (
     show_system_prompt,
     clear_system_prompt,
 )
+from groq_chat.groq_chat import get_default_model
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +110,7 @@ async def user_settings_baner(db_record):
 
 
 async def panel_banner(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    message = await translate("Control panel", context)
+    message = f"{await translate('Current model', context)}: {context.user_data.get('model', await get_default_model())}"
     db_user = await db.get_record_by_id(db.Users, context._user_id)
     if db_user:
         message += "\n\n" + await translate("User settings:", context)

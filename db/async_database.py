@@ -32,6 +32,9 @@ class Users(Base):
     admin = Column(Boolean, nullable=False)
     file_interpreter = Column(Boolean, nullable=False)
     lang = Column(String, nullable=True)
+    ocr_model = Column(String, nullable=True)
+    tts_model = Column(String, nullable=True)
+    stt_model = Column(String, nullable=True)
 
     def __str__(self):
         return f"tg_id: {self.tg_id}; is admin: {self.admin}"

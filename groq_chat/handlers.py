@@ -29,7 +29,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "Start sending messages with me to generate a response\n"
             f"{com_descr.panel}\n"
             f"{com_descr.new}\n"
-            f"{com_descr.model}"
+            f"{com_descr.model}\n"
             f"{com_descr.info}"
         ),
         context,

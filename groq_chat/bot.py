@@ -15,6 +15,7 @@ from groq_chat.model_changer import (
     change_model_callback_handler,
     model_command_handler,
     show_model_info,
+    set_model_default_executor,
 )
 from groq_chat.handlers import (
     start,
@@ -141,6 +142,9 @@ def start_bot():
 
     app.add_handler(
         CallbackQueryHandler(control_panel_executor, pattern="^ctrl_panel_")
+    )
+    app.add_handler(
+        CallbackQueryHandler(set_model_default_executor, pattern="^set_default_")
     )
 
     app.add_error_handler(error_handler)
