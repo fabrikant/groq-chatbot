@@ -8,8 +8,10 @@ from telegram.ext.filters import (
     VOICE,
     AUDIO,
     Document,
+    MessageFilter,
 )
 from dotenv import load_dotenv
+
 
 load_dotenv()
 
@@ -28,7 +30,18 @@ class AuthorizedUserFilter(UpdateFilter):
         )
 
 
+class StartsWithFilter(MessageFilter):
+    def __init__(self, prefix: str):
+        super().__init__()
+        self.prefix = prefix
+
+    def filter(self, message):
+        # Важно: message.text может быть None (например, в чисто аудио-сообщениях)
+        return bool(message.text and message.text.startswith(self.prefix))
+
+
 AuthFilter = AuthorizedUserFilter()
 MessageFilter = AuthFilter & ~COMMAND & TEXT
 PhotoFilter = AuthFilter & ~COMMAND & (PHOTO | Document.IMAGE)
 AudioFilter = AuthFilter & ~COMMAND & (VOICE | AUDIO | Document.AUDIO)
+VoiceFilter = AuthFilter & COMMAND & StartsWithFilter("/set_voice_")

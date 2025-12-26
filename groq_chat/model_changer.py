@@ -8,7 +8,9 @@ from translate.translate import translate
 import groq_chat.command_descriptions as com_descr
 from groq_chat.context import new_chat
 from telegram.constants import ChatAction
-from db.async_database import set_user_setting
+from db.async_database import set_user_setting, set_model_voices, get_user_setting
+from groq_chat.groq_chat import generate_tts_response
+from groq_chat.llm_conversation import send_response
 
 logger = logging.getLogger(__name__)
 
@@ -154,6 +156,37 @@ async def set_model_default_executor(
     user_id = context._user_id
     setting_id = f"{setting_type}_model"
     await set_user_setting(user_id, setting_id, model_name)
-    await query.edit_message_text(
-        await translate("Default model set successfully", context)
+    message = await translate(
+        f"Default {setting_type.upper()} model set to {model_name}", context
+    )
+    # Нужно определить доступные голоса для данной модели
+    error_string = await generate_tts_response(
+        "how are you?",
+        voice="__voice_check__",
+        context=context,
+    )
+
+    voices = None
+    try:
+        if "voice must be" in error_string:
+            voices = error_string.split("[")[1].split("]")[0].split(" ")
+    except Exception as e:
+        message += "\n" + await translate(
+            "But this is a bad idea since the model does not have this feature", context
+        )
+
+    if voices:
+        await set_model_voices(user_id, model_name, voices)
+        current_voice = await get_user_setting(user_id, "tts_voice", None)
+        message += "\n\n" + await translate("Change the model's voice", context) + ":\n"
+        for v in voices:
+            if v == current_voice:
+                message += f"• **/set\_voice\_{v}** (current)\n"
+            else:
+                message += f"• /set\_voice\_{v}\n"
+
+    await context.bot.send_message(
+        chat_id=query.message.chat.id,
+        text=message,
+        parse_mode=ParseMode.MARKDOWN,
     )

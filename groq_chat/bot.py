@@ -21,6 +21,7 @@ from groq_chat.tts_handler import (
     tts_command_handler,
     cancelled_tts_mode,
     get_tts_message,
+    tts_set_voice_callback,
 )
 from groq_chat.handlers import (
     start,
@@ -42,7 +43,13 @@ from groq_chat.handlers import (
 from groq_chat.groq_chat import set_chatbot
 from groq import AsyncGroq
 import httpx
-from groq_chat.filters import AuthFilter, MessageFilter, PhotoFilter, AudioFilter
+from groq_chat.filters import (
+    AuthFilter,
+    MessageFilter,
+    PhotoFilter,
+    AudioFilter,
+    VoiceFilter,
+)
 from dotenv import load_dotenv
 import logging
 from telegram import Update, BotCommand
@@ -140,7 +147,7 @@ def start_bot():
         )
     )
 
-    # Перехот в tts режим
+    # Переход в tts режим
     app.add_handler(
         ConversationHandler(
             entry_points=[
@@ -156,6 +163,7 @@ def start_bot():
             conversation_timeout=90,
         )
     )
+    app.add_handler(MessageHandler(VoiceFilter, tts_set_voice_callback))
 
     app.add_handler(MessageHandler(MessageFilter, llm_request))
     app.add_handler(MessageHandler(PhotoFilter, llm_image_request))

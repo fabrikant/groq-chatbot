@@ -9,7 +9,7 @@ from telegram.ext import ConversationHandler
 
 from groq_chat.handlers import START_TTS, CANCEL_TTS
 from groq_chat.llm_conversation import send_response
-
+from db.async_database import get_user_setting, set_user_setting
 
 logger = logging.getLogger(__name__)
 
@@ -50,9 +50,11 @@ async def get_tts_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         chat_id=update.effective_chat.id, action=ChatAction.RECORD_VOICE
     )
 
+    voice = await get_user_setting(context._user_id, "tts_voice", "default")
     response_audio = await generate_tts_response(
         user_message,
-        context,
+        voice=voice,
+        context=context,
     )
 
     if isinstance(response_audio, str):
@@ -78,3 +80,24 @@ async def get_tts_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     )
 
     return ConversationHandler.END
+
+
+async def tts_set_voice_callback(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    if update.callback_query:
+        query = update.callback_query
+        chat_id = query.message.chat.id
+        query.answer()
+    else:
+        chat_id = update.effective_chat.id
+
+    voice = update.message.text
+    voice = voice.replace("/set_voice_", "")
+    user_id = context._user_id
+    await set_user_setting(user_id, "tts_voice", voice)
+    message = await translate("TTS voice set to", context) + f" {voice}"
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text=message,
+    )

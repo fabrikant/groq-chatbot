@@ -35,6 +35,7 @@ class Users(Base):
     ocr_model = Column(String, nullable=True)
     tts_model = Column(String, nullable=True)
     stt_model = Column(String, nullable=True)
+    tts_voice = Column(String, nullable=True)
 
     def __str__(self):
         return f"tg_id: {self.tg_id}; is admin: {self.admin}"
@@ -42,6 +43,13 @@ class Users(Base):
     def postprocessing(self):
         if not self.lang:
             self.lang = os.getenv("LANG", "en")
+
+
+class ModelsVoices(Base):
+    __tablename__ = "models_voices"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    model_name = Column(String, nullable=False)
+    voice_name = Column(String, nullable=False)
 
 
 async def initialize_db() -> AsyncSession:
@@ -154,3 +162,49 @@ async def get_user_setting(user_id, setting_id, default_value=None):
     if instance:
         result = getattr(instance, setting_id)
     return result
+
+
+async def set_model_voices(user_id: int, model_name: str, voices: list) -> None:
+    session = db_session
+
+    # 1. Синхронизация таблицы ModelsVoices (добавление/удаление)
+    stmt = select(ModelsVoices).where(ModelsVoices.model_name == model_name)
+    result = await session.execute(stmt)
+    existing_records = result.scalars().all()
+
+    existing_voices_map = {r.voice_name: r for r in existing_records}
+    existing_voices_names = set(existing_voices_map.keys())
+    new_voices_names = set(voices)
+
+    # Удаляем старые
+    voices_to_delete = existing_voices_names - new_voices_names
+    if voices_to_delete:
+        delete_stmt = delete(ModelsVoices).where(
+            ModelsVoices.model_name == model_name,
+            ModelsVoices.voice_name.in_(voices_to_delete),
+        )
+        await session.execute(delete_stmt)
+
+    # Добавляем новые
+    for v_name in new_voices_names - existing_voices_names:
+        new_record = ModelsVoices(
+            model_name=model_name,
+            voice_name=v_name,
+            # active=False  # Раскомментируйте, если поле есть в БД
+        )
+        session.add(new_record)
+
+    # 2. Проверка пользователя (Users)
+    if voices:  # Проверяем только если список не пуст
+        user_stmt = select(Users).where(Users.id == user_id)
+        user_result = await session.execute(user_stmt)
+        user = user_result.scalar_one_or_none()
+
+        if user:
+            if user.tts_voice not in voices:
+                user.tts_voice = voices[0]
+
+    try:
+        await session.commit()
+    except SQLAlchemyError as e:
+        await session.rollback()

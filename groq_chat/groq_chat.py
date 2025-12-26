@@ -143,7 +143,7 @@ async def generate_stt_response(
 
 
 async def generate_tts_response(
-    message: str, context: ContextTypes.DEFAULT_TYPE
+    message: str, voice: str, context: ContextTypes.DEFAULT_TYPE
 ) -> str:
     model = await get_user_setting(
         context._user_id,
@@ -153,16 +153,17 @@ async def generate_tts_response(
     try:
         response = await chatbot.audio.speech.create(
             model=model,
-            voice="autumn",
+            voice=voice,
             response_format="wav",
             input=message,
         )
-        # await response.stream_to_file("./data/response.wav")
         return response
 
     except groq.GroqError as e:
         message = e.body.get("error", {}).get("message")
         status_code = e.status_code
+        if status_code == 400:
+            return message
         return f"{await translate("Groq API returned an error", context)}: {status_code} ({message})"
     except Exception as e:
         return str(e)
