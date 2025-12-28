@@ -159,34 +159,39 @@ async def set_model_default_executor(
     message = await translate(
         f"Default {setting_type.upper()} model set to {model_name}", context
     )
-    # Нужно определить доступные голоса для данной модели
-    error_string = await generate_tts_response(
-        "how are you?",
-        voice="__voice_check__",
-        context=context,
-    )
 
-    voices = None
-    try:
-        if "voice must be" in error_string:
-            voices = error_string.split("[")[1].split("]")[0].split(" ")
-    except Exception as e:
-        message += "\n" + await translate(
-            "But this is a bad idea since the model does not have this feature", context
+    if setting_type == "tts":
+        # Нужно определить доступные голоса для данной модели
+        error_string = await generate_tts_response(
+            "how are you?",
+            voice="__voice_check__",
+            context=context,
         )
 
-    if voices:
-        await set_model_voices(user_id, model_name, voices)
-        current_voice = await get_user_setting(user_id, "tts_voice", None)
-        message += "\n\n" + await translate("Change the model's voice", context) + ":\n"
-        for v in voices:
-            if v == current_voice:
-                message += f"• **/set\_voice\_{v}** (current)\n"
-            else:
-                message += f"• /set\_voice\_{v}\n"
+        voices = None
+        try:
+            if "voice must be" in error_string:
+                voices = error_string.split("[")[1].split("]")[0].split(" ")
+        except Exception as e:
+            message += "\n" + await translate(
+                "But this is a bad idea since the model does not have this feature",
+                context,
+            )
 
-    await context.bot.send_message(
-        chat_id=query.message.chat.id,
-        text=message,
-        parse_mode=ParseMode.MARKDOWN,
-    )
+        if voices:
+            await set_model_voices(user_id, model_name, voices)
+            current_voice = await get_user_setting(user_id, "tts_voice", None)
+            message += (
+                "\n\n" + await translate("Change the model's voice", context) + ":\n"
+            )
+            for v in voices:
+                if v == current_voice:
+                    message += f"• **/set\_voice\_{v}** (current)\n"
+                else:
+                    message += f"• /set\_voice\_{v}\n"
+
+        await context.bot.send_message(
+            chat_id=query.message.chat.id,
+            text=message,
+            parse_mode=ParseMode.MARKDOWN,
+        )
