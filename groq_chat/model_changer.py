@@ -190,8 +190,8 @@ async def set_model_default_executor(
                 else:
                     message += f"• /set\_voice\_{v}\n"
 
-        await context.bot.send_message(
-            chat_id=query.message.chat.id,
-            text=message,
-            parse_mode=ParseMode.MARKDOWN,
-        )
+    await context.bot.send_message(
+        chat_id=query.message.chat.id,
+        text=message,
+        parse_mode=ParseMode.MARKDOWN,
+    )
