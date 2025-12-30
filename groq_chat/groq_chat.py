@@ -133,9 +133,9 @@ async def generate_stt_response(
         message = e.body.get("error", {}).get("message")
         status_code = e.status_code
         if status_code == 413:
-            message += await translate(
-                "\nTry resetting the context. Use the command /new", context
-            )
+            message += f"\n{await translate(
+                    "Try resetting the context. Use the command", context
+                )} /new"
 
         return f"{await translate("Groq API returned an error", context)}: {status_code} ({message})"
     except Exception as e:
