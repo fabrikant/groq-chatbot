@@ -10,28 +10,15 @@ from groq_chat.groq_chat import (
 )
 from translate.translate import translate
 import telegramify_markdown
-from telegramify_markdown.interpreters import (
-    TextInterpreter,
-    FileInterpreter,
-    MermaidInterpreter,
-    InterpreterChain,
-)
 from telegram.constants import ParseMode
-from telegramify_markdown.type import ContentTypes
+from telegramify_markdown.content import ContentType
 import io
 from telegram import InputFile
-from telegramify_markdown.customize import get_runtime_config
 import db.async_database as db
 import base64
 from io import BytesIO
 
 logger = logging.getLogger(__name__)
-
-
-# get_runtime_config().markdown_symbol.head_level_1 = "#"
-# get_runtime_config().markdown_symbol.head_level_2 = "##"
-# get_runtime_config().markdown_symbol.head_level_3 = "###"
-# get_runtime_config().markdown_symbol.head_level_4 = "####"
 
 
 async def llm_audio_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -101,58 +88,51 @@ async def llm_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 async def send_response(
     full_output_message: str, update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
-
-    if await db.get_user_setting(context._user_id, "file_interpreter", False):
-        interpreter_chain = InterpreterChain(
-            [
-                TextInterpreter(),
-                FileInterpreter(),
-                MermaidInterpreter(session=None),
-            ]
-        )
-    else:
-        interpreter_chain = InterpreterChain(
-            [
-                TextInterpreter(),
-                MermaidInterpreter(session=None),
-            ]
-        )
-
-    MAX_LEN = 4000
-    # Use the custom interpreter chain
-    boxs = await telegramify_markdown.telegramify(
-        content=full_output_message,
-        interpreters_use=interpreter_chain,
-        latex_escape=True,
-        normalize_whitespace=True,
-        max_word_count=MAX_LEN,  # The maximum number of words in a single message.
+    # Check user setting for file extraction
+    use_file_interpreter = await db.get_user_setting(
+        context._user_id, "file_interpreter", False
     )
 
-    for item in boxs:
+    results = await telegramify_markdown.telegramify(
+        content=full_output_message,
+        max_message_length=4000,
+        latex_escape=True,
+        render_mermaid=use_file_interpreter,
+        min_file_lines=1 if use_file_interpreter else 0,
+    )
 
-        if item.content_type == ContentTypes.TEXT:
+    for item in results:
+        if item.content_type == ContentType.TEXT:
             try:
                 await update.message.reply_text(
-                    item.content, parse_mode=ParseMode.MARKDOWN_V2
+                    item.text, entities=[e.to_dict() for e in item.entities]
                 )
             except BadRequest as e:
                 if "parse" in str(e).lower():
                     # Если ошибки форматирования, отправляем без него
-                    await update.message.reply_text(item.content, parse_mode=None)
+                    await update.message.reply_text(item.text)
 
-        elif item.content_type == ContentTypes.PHOTO:
+        elif item.content_type == ContentType.PHOTO:
             await context.bot.send_photo(
                 chat_id=update.effective_chat.id,
                 photo=InputFile(io.BytesIO(item.file_data), filename=item.file_name),
-                caption=item.caption,
-                parse_mode=ParseMode.MARKDOWN_V2,
+                caption=item.caption_text or None,
+                caption_entities=(
+                    [e.to_dict() for e in item.caption_entities]
+                    if item.caption_entities
+                    else None
+                ),
             )
-        elif item.content_type == ContentTypes.FILE:
+        elif item.content_type == ContentType.FILE:
             await context.bot.send_document(
                 chat_id=update.effective_chat.id,
                 document=InputFile(io.BytesIO(item.file_data), filename=item.file_name),
-                caption=item.caption,
-                parse_mode=ParseMode.MARKDOWN_V2,
+                caption=item.caption_text or None,
+                caption_entities=(
+                    [e.to_dict() for e in item.caption_entities]
+                    if item.caption_entities
+                    else None
+                ),
             )
 
     context.user_data["messages"].append(

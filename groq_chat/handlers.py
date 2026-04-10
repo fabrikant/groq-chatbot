@@ -11,10 +11,7 @@ from groq_chat.context import new_chat
 from db.async_database import set_user_setting
 
 import telegramify_markdown
-from telegramify_markdown.interpreters import (
-    TextInterpreter,
-    InterpreterChain,
-)
+from telegramify_markdown.content import ContentType
 
 logger = logging.getLogger(__name__)
 (
@@ -188,20 +185,12 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
     update_str = update.to_dict() if isinstance(update, Update) else str(update)
     message = f"```update_str\n{update_str}```\n\n\n```error_str\n\n{tb_string}\n```\n"
 
-    interpreter_chain = InterpreterChain(
-        [
-            TextInterpreter(),
-        ]
-    )
-
-    MAX_LEN = 4000
-    # Use the custom interpreter chain
-    boxs = await telegramify_markdown.telegramify(
+    results = await telegramify_markdown.telegramify(
         content=message,
-        interpreters_use=interpreter_chain,
+        max_message_length=4000,
         latex_escape=True,
-        normalize_whitespace=True,
-        max_word_count=MAX_LEN,  # The maximum number of words in a single message.
+        render_mermaid=False,
+        min_file_lines=0,
     )
     if update.callback_query:
         query = update.callback_query
@@ -209,7 +198,10 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
     else:
         chat_id = update.effective_chat.id
 
-    for item in boxs:
-        await context.bot.send_message(
-            chat_id=chat_id, text=item.content, parse_mode=ParseMode.MARKDOWN_V2
-        )
+    for item in results:
+        if item.content_type == ContentType.TEXT:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=item.text,
+                entities=[e.to_dict() for e in item.entities],
+            )
