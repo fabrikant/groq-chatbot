@@ -13,6 +13,7 @@ from groq_chat.handlers import (
     clear_system_prompt,
 )
 from groq_chat.groq_chat import get_default_model
+from telegram.error import BadRequest
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +133,7 @@ async def change_file_interpreter(update, context, command):
     )
     if db_record:
         getattr(db_record, setting_id, None)
-        message = message = await panel_banner(update, context)
+        message = await panel_banner(update, context)
     else:
         message = await translate(
             "An error occurred while setting a new value", context
@@ -140,4 +141,15 @@ async def change_file_interpreter(update, context, command):
 
     logger.info(message)
     query = update.callback_query
-    await query.edit_message_text(text=message, reply_markup=query.message.reply_markup)
+    # await query.edit_message_text(text=message, reply_markup=query.message.reply_markup)
+    try:
+        # Пробуем редактировать текущее
+        await query.edit_message_text(
+            text=message, reply_markup=query.message.reply_markup
+        )
+    except BadRequest as e:
+        if "Message is not modified" in str(e):
+            logger.info("Message is not modified, skipping edit")
+        else:
+            # Если ошибка другая — пробрасываем её дальше
+            raise e
