@@ -49,9 +49,33 @@ for arg in "$@"; do
 	esac
 done
 
+# Проверка наличия Docker Buildx и определение команды сборки
+if docker buildx version >/dev/null 2>&1; then
+    BUILD_CMD="docker buildx build"
+    echo "Docker Buildx установлен. Используем buildx."
+else
+    echo "Docker Buildx не установлен."
+    read -p "Хотите установить Docker Buildx? (y/n): " choice
+    case "$choice" in 
+      y|Y ) 
+        echo "Установка Docker Buildx..."
+        sudo apt update && sudo apt install -y docker-buildx
+        BUILD_CMD="docker buildx build"
+        ;;
+      n|N ) 
+        echo "Используем обычный docker build."
+        BUILD_CMD="docker build"
+        ;;
+      * ) 
+        echo "Неверный ввод. Используем обычный docker build."
+        BUILD_CMD="docker build"
+        ;;
+    esac
+fi
+
 echo "Building image..."
 # Добавляем оба тэга к образу
-docker build -t $IMAGE_LATEST_TAG -t $IMAGE_DATE_TAG .
+$BUILD_CMD -t $IMAGE_LATEST_TAG -t $IMAGE_DATE_TAG .
 echo "Build complete"
 
 if [ "$SKIP_PUSH" = false ]; then
