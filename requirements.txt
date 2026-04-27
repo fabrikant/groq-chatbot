@@ -1,7 +1,7 @@
 groq
-python-dotenv==1.0.1
-python-telegram-bot==21.5
-httpx==0.28.1
+python-dotenv
+python-telegram-bot
+httpx[socks]
 aiohttp
 googletrans
 telegramify-markdown[mermaid]

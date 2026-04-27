@@ -4,6 +4,13 @@ import os
 
 logger = logging.getLogger(__name__)
 
+# Настройка прокси из переменных окружения
+proxy_url = os.getenv("PROXY_URL")
+if proxy_url:
+    os.environ["HTTP_PROXY"] = proxy_url
+    os.environ["HTTPS_PROXY"] = proxy_url
+    logger.info(f"Прокси настроен: {proxy_url}")
+
 if __name__ == "__main__":
     log_level = os.getenv("LOG_LEVEL", default="info")
 

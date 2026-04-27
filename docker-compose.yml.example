@@ -1,0 +1,24 @@
+services:
+  groq-chatbot:
+    container_name: groq-chatbot
+    image: ghcr.io/fabrikant/groq_chat:latest
+    environment:
+      - AUTHORIZED_USERS=135....8,82...1
+      # Required
+      - GROQ_API_KEY=gsk_dm_____________
+      - BOT_TOKEN=83__________________
+      #- MONGODB_URL=mongodb://mongo:27017
+
+      # • critical (самый высокий уровень, только критические ошибки)
+      # • error (ошибки)
+      # • warning (предупреждения)
+      # • info (информационные сообщения, значение по умолчанию)
+      # • debug (отладочные сообщения)
+      # • trace (очень подробные отладочные сообщения, включая тела запросов/ответов, добавленный в последних версиях Uvicorn)
+      # В зависимости от этой переменной также устанавливаются логи всего приложения
+      - LOG_LEVEL=warning
+      - LANG=ru
+      #- PROXY_URL=socks5://127.0.0.1:10101
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
