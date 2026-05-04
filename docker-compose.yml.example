@@ -1,6 +1,7 @@
 services:
   groq-chatbot:
     container_name: groq-chatbot
+    init:true
     image: ghcr.io/fabrikant/groq_chat:latest
     environment:
       - AUTHORIZED_USERS=135....8,82...1

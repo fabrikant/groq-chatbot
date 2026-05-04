@@ -10,7 +10,7 @@
     "ru": "Изменение системного промпта отменено"
   },
   "System prompt changed": { "ru": "Системный промпт изменен" },
-  "System prompt not set": { "ru": "Систенмый промпт не установлен" },
+  "System prompt not set": { "ru": "Системный промпт не установлен" },
   "Show sytem prompt": { "ru": "Показать системный промпт" },
   "Clear system prompt": { "ru": "Очистить системный промпт" },
   "Set system prompt": { "ru": "Установить системный промпт" }
